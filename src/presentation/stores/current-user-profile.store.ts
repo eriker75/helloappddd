@@ -25,10 +25,6 @@ export interface CurrentUserProfileState extends UserProfile {
   isActive: boolean;
   isOnboarded: boolean;
   lastOnline: string;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  accessToken: string;
-  refreshToken: string;
 }
 
 export interface CurrentUserProfileAction {
@@ -63,10 +59,6 @@ const initialState: CurrentUserProfileState = {
   isActive: false,
   isOnboarded: false,
   lastOnline: "",
-  isAuthenticated: false,
-  isLoading: false,
-  accessToken: "",
-  refreshToken: "",
   name: "",
   email: "",
   genderInterests: [],
@@ -101,12 +93,12 @@ const currentUserProfileStoreCreator: StateCreator<
     })),
 });
 
-export const currentUserProfileStore = create<CurrentUserProfileStore>()(
+export const useCurrentUserProfileStore = create<CurrentUserProfileStore>()(
   persist(immer(currentUserProfileStoreCreator), {
     name: "current-user-profile-store",
     storage: zustandAsyncStorage,
     partialize: (state) => {
-      const { isLoading, ...persisted } = state;
+      const { ...persisted } = state;
       return persisted;
     },
   })
