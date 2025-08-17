@@ -24,3 +24,7 @@ export interface UserProfile {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+export interface ExtendedUserProfile extends UserProfile {
+  distanceInKm: number;
+}

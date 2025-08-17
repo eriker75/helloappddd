@@ -1,4 +1,4 @@
-import { UserProfile } from "@/src/domain/models/UserProfile";
+import { UserProfile } from "@/src/domain/entities/UserProfile";
 import { create, StateCreator } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";

@@ -1,5 +1,5 @@
-import { ChatType } from "@/src/definitions/enums/ChatType.enum";
 import { LastMessageStatus } from "@/src/definitions/enums/LastMessageStatus.enum";
+import { ChatType } from "@/src/definitions/types/ChatType.type";
 
 export interface Chat {
   chatId: string;
@@ -9,11 +9,11 @@ export interface Chat {
   type: ChatType;
   lastMessageContent: string;
   lastMessageId: string;
-  lastMessageTime: string;
   lastMessageStatus: LastMessageStatus;
   lastMessageCreatedAt: Date;
   lastMessageUpdatedAt: Date;
   unreadedCount: string;
+  participants: string[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

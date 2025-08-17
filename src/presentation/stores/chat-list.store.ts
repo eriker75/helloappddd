@@ -1,4 +1,4 @@
-import { Chat } from "@/src/domain/models/Chat";
+import { Chat } from "@/src/domain/entities/Chat";
 import { create, StateCreator } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";

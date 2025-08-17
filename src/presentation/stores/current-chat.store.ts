@@ -1,4 +1,4 @@
-import { Message } from "@/src/domain/models/Message";
+import { Message } from "@/src/domain/entities/Message";
 import { create, StateCreator } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
