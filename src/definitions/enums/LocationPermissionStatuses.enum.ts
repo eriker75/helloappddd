@@ -1,0 +1,9 @@
+export enum LocationPermissionStatuses {
+  CHECKING = 'CHECKING',
+  GRANTED = 'GRANTED',
+  DENIED = 'DENIED',
+  BLOCKED = 'BLOCKED',
+  LIMITED = 'LIMITED',
+  UNAVAILABLE = 'UNAVAILABLE',
+  UNDETERMINED = 'UNDETERMINED'
+}

@@ -1,9 +1,9 @@
-import { Colors } from "../definitions/constants/Colors";
+import { GLOBAL_COLORS } from "@/src/definitions/constants/GLOBAL_COLORS";
 import { useColorScheme } from "./useColorScheme";
 
 export function useThemeColor(
   props: { light?: string; dark?: string },
-  colorName: keyof typeof Colors.light & keyof typeof Colors.dark
+  colorName: keyof typeof GLOBAL_COLORS.light & keyof typeof GLOBAL_COLORS.dark
 ) {
   const theme = useColorScheme() ?? "light";
   const colorFromProps = props[theme];
@@ -11,6 +11,6 @@ export function useThemeColor(
   if (colorFromProps) {
     return colorFromProps;
   } else {
-    return Colors[theme][colorName];
+    return GLOBAL_COLORS[theme][colorName];
   }
 }
