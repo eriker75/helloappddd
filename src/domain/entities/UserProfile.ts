@@ -9,8 +9,8 @@ export interface UserProfile {
   secondaryImages: string[];
   genderInterests: string[];
   address: string;
-  latitude: string;
-  longitude: string;
+  latitude: number;
+  longitude: number;
   minAgePreference: number;
   maxAgePreference: number;
   maxDistancePreference: number;

@@ -24,8 +24,8 @@ export interface NearbySwipeableProfile extends ExtendedUserProfile {
   name: string;
   avatar: string;
   address: string;
-  latitude: string;
-  longitude: string;
+  latitude: number;
+  longitude: number;
   secondaryImages: string[];
   isOnline: boolean;
   isActive: boolean;

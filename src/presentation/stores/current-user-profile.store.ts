@@ -18,8 +18,8 @@ export interface CurrentUserProfileState extends UserProfile {
   biography: string;
   avatar: string;
   address: string;
-  latitude: string;
-  longitude: string;
+  latitude: number;
+  longitude: number;
   secondaryImages: string[];
   isOnline: boolean;
   isActive: boolean;
@@ -52,8 +52,8 @@ const initialState: CurrentUserProfileState = {
   biography: "",
   avatar: "",
   address: "",
-  latitude: "",
-  longitude: "",
+  latitude: 0,
+  longitude: 0,
   secondaryImages: [],
   isOnline: false,
   isActive: false,
