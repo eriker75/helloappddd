@@ -7,63 +7,65 @@ import {
 } from "@/src/domain/models/user-profile.models";
 
 export class UserProfileController {
-  findUserProfileByUserId(userId: string): Promise<UserProfileResponse> {
+  async findUserProfileByUserId(userId: string): Promise<UserProfileResponse> {
     throw new Error("Method not implemented.");
   }
 
-  updateMyUserProfile(
+  async updateMyUserProfile(
     userProfileData: UpdateUserProfileRequest
   ): Promise<boolean> {
     throw new Error("Method not implemented.");
   }
 
-  deleteMyUserProfile(): Promise<boolean> {
+  async deleteMyUserProfile(): Promise<boolean> {
     throw new Error("Method not implemented.");
   }
 
-  listNearbyProfiles(
+  async listNearbyProfiles(
     maxDistance: number
   ): Promise<ExtendedUserProfileResponse[]> {
     throw new Error("Method not implemented.");
   }
 
-  listNearbySwipeableProfiles(
+  async listNearbySwipeableProfiles(
     maxDistance: number,
-    limit: number
+    limit: number = 5
   ): Promise<ExtendedUserProfileResponse[]> {
     throw new Error("Method not implemented.");
   }
 
-  listNearbyMatches(
+  async listNearbyMatches(
     maxDistance: number
   ): Promise<ExtendedUserProfileResponse[]> {
     throw new Error("Method not implemented.");
   }
 
-  updateMyLocation(
+  async updateMyLocation(
     latitude: number,
     longitude: number
-  ): Promise<UserProfileResponse> {
+  ): Promise<boolean> {
     throw new Error("Method not implemented.");
   }
 
-  onboardUser(onboardingData: OnboardUserProfileRequest): Promise<boolean> {
+  async onboardUser(
+    onboardingData: OnboardUserProfileRequest
+  ): Promise<boolean> {
     throw new Error("Method not implemented.");
   }
 
-  setOnline(): Promise<void> {
+  async setOnline(): Promise<void> {
     throw new Error("Method not implemented.");
   }
 
-  setOffline(): Promise<void> {
+  async setOffline(): Promise<void> {
     throw new Error("Method not implemented.");
   }
 
-  listMyMatches(): Promise<ExtendedUserProfileResponse[]> {
+  async listMyMatches(): Promise<ExtendedUserProfileResponse[]> {
     throw new Error("Method not implemented.");
   }
 
-  createSwipe(swipeRequest: CreateSwipeRequest): Promise<boolean> {
+  async createSwipe(swipeRequest: CreateSwipeRequest): Promise<boolean> {
     throw new Error("Method not implemented.");
   }
 }

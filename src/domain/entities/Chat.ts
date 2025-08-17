@@ -18,3 +18,11 @@ export interface Chat {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface PaginatedChats {
+  chats: Chat[];
+  page: number;
+  perPage: number;
+  hasMore: boolean;
+  total: number;
+}

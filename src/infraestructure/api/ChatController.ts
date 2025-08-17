@@ -8,37 +8,35 @@ import {
 } from "@/src/domain/models/chat.models";
 
 export class ChatController {
-  findMyChatById(id: string): Promise<ChatResponse | null> {
+  async findMyChatById(id: string): Promise<ChatResponse | null> {
     throw new Error("Method not implemented.");
   }
 
-  findAllMyChats(): Promise<ChatListResponse> {
+  async findAllMyChats(page: number, perPage: number): Promise<ChatListResponse> {
     throw new Error("Method not implemented.");
   }
 
-  createChat(chat: CreateChatRequest): Promise<boolean> {
+  async createChat(chat: CreateChatRequest): Promise<boolean> {
     throw new Error("Method not implemented.");
   }
 
-  updateChat(chat: UpdateChatRequest): Promise<boolean> {
+  async updateChat(chat: UpdateChatRequest): Promise<boolean> {
     throw new Error("Method not implemented.");
   }
 
-  deleteChat(id: string): Promise<boolean> {
+  async deleteChat(id: string): Promise<boolean> {
     throw new Error("Method not implemented.");
   }
 
-  getAllMyChatMessages(chatId: string): Promise<MessageListResponse> {
+  async getAllMyChatMessages(chatId: string, page: number, perPage: number): Promise<MessageListResponse> {
     throw new Error("Method not implemented.");
   }
 
-  sendMessageToChat(
-    messageToAddData: AddMessageToChatRequest
-  ): Promise<boolean> {
+  async sendMessageToChat(messageToAddData: AddMessageToChatRequest): Promise<boolean> {
     throw new Error("Method not implemented.");
   }
 
-  markAllMessagesFromChatAsRead(chatId: string): Promise<boolean> {
+  async markAllMessagesFromChatAsRead(chatId: string): Promise<boolean> {
     throw new Error("Method not implemented.");
   }
 }

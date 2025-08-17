@@ -1,4 +1,5 @@
 import { MessageContentType } from "@/src/definitions/types/MessageContent.type";
+import { UserProfile } from "./UserProfile";
 
 export interface Message {
   messageId: string;
@@ -13,4 +14,14 @@ export interface Message {
   deleted: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface PaginatedMessages {
+  messages: Message[];
+  chatId: string;
+  otherUserProfile?: UserProfile,
+  page: number;
+  perPage: number;
+  hasMore: boolean;
+  total: number;
 }
