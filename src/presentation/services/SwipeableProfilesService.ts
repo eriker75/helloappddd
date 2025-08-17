@@ -1,3 +1,4 @@
+
 import { MAX_SWIPEABLE_PROFILES_BATCH } from "@/src/definitions/constants/SWIPE_LIMITS";
 import { UserProfileEntity } from "@/src/domain/entities/UserProfile.entity";
 import { toNearbySwipeableProfile } from "@/src/infraestructure/mappers/UserProfileMapper";

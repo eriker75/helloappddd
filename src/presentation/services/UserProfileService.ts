@@ -22,7 +22,11 @@ import {
 } from "@/src/infraestructure/repositories/UserProfileRepositoryImpl";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import { currentUserProfileStore } from "@/src/presentation/stores/current-user-profile.store";
+import { useOnboardingStore } from "@/src/presentation/stores/onboarding.store";
 import { useCallback } from "react";
+
+/** Get user profile by id and sync to store */
+import { useEffect } from "react";
 
 /**
  * UserProfileService: Provides all user profile actions and syncs state with stores.
@@ -115,9 +119,6 @@ export function useDeleteUserProfileService() {
   );
   return { ...rest, mutate: deleteUserProfile };
 }
-
-/** Get user profile by id and sync to store */
-import { useEffect } from "react";
 export function useGetUserProfileByIdService(id: string) {
   const setProfile = useSetCurrentUserProfile();
   const query = useFindUserProfileById(id);
@@ -244,4 +245,41 @@ export function useGetPreferencesService(userId: string) {
 /** Set preferences */
 export function useSetPreferencesService() {
   return useSetPreferences();
+}
+
+export function useSetAuthUserProfile() {
+  const setProfile = useAuthUserProfileStore((s) => s.setProfile);
+  return useCallback(setProfile, [setProfile]);
+}
+
+export function useResetOnboarding() {
+  const reset = useOnboardingStore((s) => s.reset);
+  return useCallback(reset, [reset]);
+}
+
+export function useOnboardUserService() {
+  const reset = useResetOnboarding();
+  const onboardingState = useOnboardingStore();
+  const setAuthUserProfile = useSetAuthUserProfile();
+  const mutation = useOnboardUser();
+  const { mutate, ...rest } = mutation;
+
+  const onboardUser = useCallback(
+    (req: Parameters<typeof mutate>[0]) => {
+      mutate(req, {
+        onSuccess: () => {
+          setAuthUserProfile({
+            ...onboardingState,
+            isOnboarded: true,
+            isAuthenticated: true,
+            isActive: true,
+          });
+          reset();
+        },
+      });
+    },
+    [mutate, reset, onboardingState, setAuthUserProfile]
+  );
+
+  return { ...rest, mutate: onboardUser, error: mutation.error };
 }

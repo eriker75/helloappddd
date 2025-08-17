@@ -12,7 +12,7 @@ export interface Chat {
   lastMessageStatus: LastMessageStatus;
   lastMessageCreatedAt: Date;
   lastMessageUpdatedAt: Date;
-  unreadedCount: string;
+  unreadedCount: number;
   participants: string[];
   isActive: boolean;
   createdAt: Date;

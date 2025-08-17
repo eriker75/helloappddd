@@ -12,6 +12,7 @@ export interface Message {
   type: MessageContentType;
   readed: boolean;
   deleted: boolean;
+  status: string;
   createdAt: Date;
   updatedAt: Date;
 }

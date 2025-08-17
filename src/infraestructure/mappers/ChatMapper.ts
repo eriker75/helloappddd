@@ -1,4 +1,6 @@
 import { LastMessageStatus } from "@/src/definitions/enums/LastMessageStatus.enum";
+import { ChatType } from "@/src/definitions/types/ChatType.type";
+import { MessageType } from "@/src/definitions/types/MessageType.type";
 import { Chat } from "@/src/domain/entities/Chat";
 import { Message } from "@/src/domain/entities/Message";
 import {
@@ -8,50 +10,78 @@ import {
   MessageResponse,
   UpdateChatRequest,
 } from "@/src/domain/models/chat.models";
+import { mapUserProfileResponseToUserProfileEntity } from "./UserProfileMapper";
 
+/**
+ * Maps ChatResponse (API model) to Chat (domain entity).
+ * Note: Fields like image, description, type, is_active, unreadedCount, and status must exist in the response for correct mapping.
+ * If not present, ensure the model is updated or provide appropriate fallbacks here.
+ */
 export function mapSingleChatResponseToChatEntity(singleChatResponse: ChatResponse): Chat {
   return {
-    chatId: "",
-    name: "",
-    image: "",
-    description: "",
-    type: "private",
-    lastMessageContent: "",
-    lastMessageId: "",
-    lastMessageStatus: LastMessageStatus.SENT,
-    lastMessageCreatedAt: new Date(),
-    lastMessageUpdatedAt: new Date(),
-    unreadedCount: "",
-    participants: [],
-    isActive: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    chatId: singleChatResponse.id,
+    name: singleChatResponse.name,
+    image: singleChatResponse.image ?? "",
+    description: singleChatResponse.description ?? "",
+    type: (singleChatResponse.type as ChatType) ?? "private",
+    lastMessageContent: singleChatResponse.last_message?.content ?? "",
+    lastMessageId: singleChatResponse.last_message_id ?? "",
+    lastMessageStatus: (singleChatResponse.last_message?.status as LastMessageStatus) ?? LastMessageStatus.UNKNOWN,
+    lastMessageCreatedAt: singleChatResponse.last_message?.created_at
+      ? new Date(singleChatResponse.last_message.created_at)
+      : new Date(singleChatResponse.created_at),
+    lastMessageUpdatedAt: singleChatResponse.last_message?.updated_at
+      ? new Date(singleChatResponse.last_message.updated_at)
+      : new Date(singleChatResponse.updated_at),
+    unreadedCount: singleChatResponse.unreadedCount ?? 0,
+    participants: singleChatResponse.participants ?? [],
+    isActive: singleChatResponse.is_active,
+    createdAt: new Date(singleChatResponse.created_at),
+    updatedAt: new Date(singleChatResponse.updated_at),
+    ...(singleChatResponse.other_user_profile
+      ? {
+          otherUserProfile: mapUserProfileResponseToUserProfileEntity(singleChatResponse.other_user_profile),
+        }
+      : {}),
   };
 }
 
+/**
+ * Maps MessageResponse (API model) to Message (domain entity).
+ * Note: Fields like readed, deleted, and status must exist in the response for correct mapping.
+ * If not present, ensure the model is updated or provide appropriate fallbacks here.
+ */
 export function mapSingleMessageResponseToMessageEntity(message: MessageResponse): Message {
   return {
-    messageId: "",
-    chatId: "",
-    senderId: "",
-    type: "image",
-    readed: false,
-    deleted: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    messageId: message.id,
+    chatId: message.chat_id,
+    senderId: message.sender_id,
+    type: message.type as MessageType,
+    content: message.content,
+    readed: message.readed,
+    deleted: message.deleted,
+    status: (message?.status as LastMessageStatus) ?? LastMessageStatus.UNKNOWN,
+    createdAt: new Date(message.created_at),
+    updatedAt: new Date(message.updated_at),
   };
 }
 
 export function mapPartialChatToCreateChatRequestData(partialChat: Partial<Chat>): CreateChatRequest {
   return {
-    type: "private",
-    participants: [],
+    type: partialChat.type ?? "private",
+    description: partialChat.description,
+    name: partialChat.name,
+    image: partialChat.image,
+    participants: partialChat.participants ?? [],
   };
 }
 
 export function mapPartialChatToUpdateChatRequestData(partialChat: Partial<Chat>): UpdateChatRequest {
   return {
-    participants: [],
+    description: partialChat.description,
+    name: partialChat.name,
+    image: partialChat.image,
+    participants: partialChat.participants,
   };
 }
 
@@ -59,7 +89,9 @@ export default function mapPartialMessageToCreateSendMessageData(
   partialMessage: Partial<Message>
 ): Omit<AddMessageToChatRequest, "chatId"> {
   return {
-    type: "text",
-    parentId: "",
+    content: partialMessage.content,
+    draftContent: partialMessage.draftContent,
+    type: partialMessage.type ?? "text",
+    parentId: partialMessage.parentId ?? "",
   };
 }

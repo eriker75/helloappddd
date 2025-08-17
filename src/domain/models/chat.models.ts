@@ -1,5 +1,6 @@
 import { ChatType } from "@/src/definitions/types/ChatType.type";
 import { MessageType } from "@/src/definitions/types/MessageType.type";
+import { UserProfileResponse } from "./user-profile.models";
 
 export interface CreateChatRequest {
   type: ChatType;
@@ -18,6 +19,19 @@ export interface UpdateChatRequest {
 
 export interface ChatResponse {
   id: string;
+  name: string;
+  creator_id: string;
+  created_at: string;
+  updated_at: string;
+  participants: string[];
+  type: string;
+  image?: string;
+  description: string;
+  unreadedCount: number;
+  last_message_id?: string;
+  is_active: boolean;
+  last_message?: MessageResponse;
+  other_user_profile?: UserProfileResponse;
 }
 
 export interface ChatListResponse {
@@ -37,8 +51,16 @@ export interface AddMessageToChatRequest {
 }
 
 export interface MessageResponse {
+  id: string;
   type: ChatType;
   chat_id: string;
+  status: string;
+  sender_id: string;
+  content: string;
+  readed: boolean;
+  deleted: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface MessageListResponse {
