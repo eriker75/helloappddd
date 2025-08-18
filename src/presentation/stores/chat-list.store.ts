@@ -5,7 +5,7 @@ import { immer } from "zustand/middleware/immer";
 import { zustandAsyncStorage } from "../../utils/zustandAsyncStorage";
 
 export interface ChatListState {
-  chats: Chat[];
+  chats: Record<string, Chat>; // Hash table: chatId -> Chat
   page: number;
   perPage: number;
   total: number;
@@ -13,20 +13,8 @@ export interface ChatListState {
 }
 
 export interface ChatListAction {
-  setChats: (
-    chats: Chat[],
-    page?: number,
-    perPage?: number,
-    total?: number,
-    hasMore?: boolean
-  ) => void;
-  appendChats: (
-    chats: Chat[],
-    page: number,
-    perPage: number,
-    total: number,
-    hasMore: boolean
-  ) => void;
+  setChats: (chats: Chat[], page?: number, perPage?: number, total?: number, hasMore?: boolean) => void;
+  appendChats: (chats: Chat[], page: number, perPage: number, total: number, hasMore: boolean) => void;
   addChat: (chat: Chat) => void;
   removeChat: (chatId: string) => void;
   setLoadingChats: (loading: boolean) => void;
@@ -44,12 +32,13 @@ export interface ChatListAction {
       createdAt: string;
     }
   ) => void;
+  getSortedChats: () => Chat[]; // Para obtener los chats ordenados
 }
 
 export type ChatListStore = ChatListState & ChatListAction;
 
 const initialState: ChatListState = {
-  chats: [],
+  chats: {},
   page: 1,
   perPage: 20,
   total: 0,
@@ -58,44 +47,27 @@ const initialState: ChatListState = {
 
 function sortChatsDesc(chats: Chat[]): Chat[] {
   return [...chats].sort(
-    (a, b) =>
-      new Date(b.lastMessageCreatedAt).getTime() -
-      new Date(a.lastMessageCreatedAt).getTime()
+    (a, b) => new Date(b.lastMessageCreatedAt).getTime() - new Date(a.lastMessageCreatedAt).getTime()
   );
 }
 
-const chatListStoreCreator: StateCreator<
-  ChatListStore,
-  [["zustand/immer", never]],
-  [["zustand/persist", unknown]]
-> = (set) => ({
+const chatListStoreCreator: StateCreator<ChatListStore, [["zustand/immer", never]], [["zustand/persist", unknown]]> = (
+  set,
+  get
+) => ({
   ...initialState,
-  setChats: (
-    chats: Chat[],
-    page = 1,
-    perPage = 20,
-    total = 0,
-    hasMore = false
-  ) =>
+  setChats: (chats: Chat[], page = 1, perPage = 20, total = 0, hasMore = false) =>
     set((state) => {
-      state.chats = sortChatsDesc(chats);
+      state.chats = Object.fromEntries(chats.map((c) => [c.chatId, c]));
       state.page = page;
       state.perPage = perPage;
       state.total = total;
       state.hasMore = hasMore;
     }),
-  appendChats: (
-    chats: Chat[],
-    page: number,
-    perPage: number,
-    total: number,
-    hasMore: boolean
-  ) =>
+  appendChats: (chats: Chat[], page: number, perPage: number, total: number, hasMore: boolean) =>
     set((state) => {
-      if (page === 1) {
-        state.chats = sortChatsDesc(chats);
-      } else {
-        state.chats = sortChatsDesc([...state.chats, ...chats]);
+      for (const chat of chats) {
+        state.chats[chat.chatId] = chat;
       }
       state.page = page;
       state.perPage = perPage;
@@ -104,11 +76,11 @@ const chatListStoreCreator: StateCreator<
     }),
   addChat: (chat: Chat) =>
     set((state) => {
-      state.chats = sortChatsDesc([chat, ...state.chats]);
+      state.chats[chat.chatId] = chat;
     }),
   removeChat: (chatId: string) =>
     set((state) => {
-      state.chats = state.chats.filter((c: Chat) => c.chatId !== chatId);
+      delete state.chats[chatId];
     }),
   setLoadingChats: (loading: boolean) =>
     set((state) => {
@@ -132,22 +104,24 @@ const chatListStoreCreator: StateCreator<
     }),
   updateChatLastMessage: (chatId, lastMessage) =>
     set((state) => {
-      const idx = state.chats.findIndex((c: Chat) => c.chatId === chatId);
-      if (idx !== -1) {
-        const updatedChat = {
-          ...state.chats[idx],
+      const chat = state.chats[chatId];
+      if (chat) {
+        state.chats[chatId] = {
+          ...chat,
           lastMessageId: lastMessage.id,
           lastMessageContent: lastMessage.content,
           lastMessageStatus: lastMessage.status,
           lastMessageCreatedAt: lastMessage.createdAt,
         };
-        state.chats.splice(idx, 1);
-        state.chats.unshift(updatedChat);
       }
     }),
+  getSortedChats: () => {
+    const chatsArray = Object.values(get().chats);
+    return sortChatsDesc(chatsArray);
+  },
 });
 
-export const chatListStore = create<ChatListStore>()(
+export const useChatListStore = create<ChatListStore>()(
   persist(immer(chatListStoreCreator), {
     name: "chat-list-store",
     storage: zustandAsyncStorage,

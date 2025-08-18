@@ -3,40 +3,13 @@ import type { Message } from "@/src/domain/entities/Message";
 import {
   useCreateChat,
   useFindAllMyChats,
-  useFindMyChatById,
   useGetAllMyChatMessages,
   useMarkAllMessagesFromChatAsRead,
-  useSendMessageToChat,
+  useSendMessageToChat
 } from "@/src/infraestructure/repositories/ChatRepositoryImpl";
 import { chatListStore } from "@/src/presentation/stores/chat-list.store";
-import { currentChatStore } from "@/src/presentation/stores/current-chat.store";
+import { currentChatStore } from "@/src/presentation/stores/chat-messages.store";
 import { useEffect } from "react";
-
-/**
- * Hook to fetch a chat by ID and sync with currentChatStore.
- */
-export function useFindMyChatByIdService(id: string) {
-  const query = useFindMyChatById(id);
-  const setCurrentChat = currentChatStore((s) => s.setCurrentChat);
-
-  useEffect(() => {
-    if (query.data) {
-      setCurrentChat({
-        chatId: query.data.chatId,
-        chatName: query.data.name,
-        chatImage: query.data.image,
-        chatIsActive: query.data.isActive,
-        // messages are not part of Chat, handled by message service
-        page: 1,
-        perPage: 20,
-        total: 0,
-        hasMore: false,
-      });
-    }
-  }, [query.data, setCurrentChat]);
-
-  return query;
-}
 
 /**
  * Hook to fetch all chats and sync with chatListStore.
@@ -147,6 +120,7 @@ export function useMarkAllMessagesFromChatAsReadService() {
     setMessages(messages.map(m => ({ ...m, readed: true })));
     mutation.mutate(chatId, {
       // Optionally handle rollback on error
+
     });
   };
 
