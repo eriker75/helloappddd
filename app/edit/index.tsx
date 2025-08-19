@@ -6,29 +6,19 @@ import CustomRadioButton from "@/components/forms/CustomRadioButton";
 import { HStack, Text, VStack } from "@/components/ui";
 import { GENDER_TYPES } from "@/src/definitions/constants/GENDER_TYPES";
 import { INTEREST_TYPES } from "@/src/definitions/constants/INTEREST_TYPES";
-import { useUpdateUserProfileService } from "@/src/presentation/services/UserProfileService";
-import { currentUserProfileStore } from "@/src/presentation/stores/current-user-profile.store";
-import {
-  EditProfileForm,
-  editProfileSchema,
-} from "@/src/presentation/validators/edit-profile.schema";
+import { useUpdateMyUserProfileInformation } from "@/src/presentation/services/UserProfileService";
+import { useCurrentUserProfileStore } from "@/src/presentation/stores/current-user-profile.store";
+import { EditProfileForm, editProfileSchema } from "@/src/presentation/validators/edit-profile.schema";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Image, ScrollView, TouchableOpacity, View } from "react-native";
 
 const EditProfileScreen = () => {
   // Store
-  const profile = currentUserProfileStore();
+  const profile = useCurrentUserProfileStore();
 
   // Helper: parse ISO date to DD/MM/YYYY
   function formatBirthDate(dateStr?: string) {
@@ -51,28 +41,21 @@ const EditProfileScreen = () => {
   // Main image: prefer avatar, else first secondary image, else ""
   const initialMainPicture =
     (typeof profile.avatar === "string" && profile.avatar) ||
-    (Array.isArray(profile.secondaryImages) &&
-    profile.secondaryImages.length > 0
-      ? profile.secondaryImages[0]
-      : "");
+    (Array.isArray(profile.secondaryImages) && profile.secondaryImages.length > 0 ? profile.secondaryImages[0] : "");
 
   const [mainPicture, setMainPicture] = useState(initialMainPicture);
   const [secondaryImages, setSecondaryImages] = useState<string[]>(
     Array.isArray(profile.secondaryImages) ? profile.secondaryImages : []
   );
-  const [minAge, setMinAge] = useState(
-    typeof profile.minAgePreference === "number" ? profile.minAgePreference : 18
-  );
-  const [maxAge, setMaxAge] = useState(
-    typeof profile.maxAgePreference === "number" ? profile.maxAgePreference : 98
-  );
+  const [minAge, setMinAge] = useState(typeof profile.minAgePreference === "number" ? profile.minAgePreference : 18);
+  const [maxAge, setMaxAge] = useState(typeof profile.maxAgePreference === "number" ? profile.maxAgePreference : 98);
 
   // Form
   const {
     control,
     handleSubmit,
     setValue,
-    formState: { errors, isValid, isDirty },
+    formState: { errors, isValid },
   } = useForm<EditProfileForm>({
     resolver: zodResolver(editProfileSchema),
     mode: "onChange",
@@ -81,24 +64,12 @@ const EditProfileScreen = () => {
       birthDate: formatBirthDate(profile.birthDate),
       biography: typeof profile.biography === "string" ? profile.biography : "",
       gender:
-        profile.gender === 1
-          ? GENDER_TYPES.MALE
-          : profile.gender === 2
-          ? GENDER_TYPES.FEMALE
-          : GENDER_TYPES.OTHER,
+        profile.gender === 1 ? GENDER_TYPES.MALE : profile.gender === 2 ? GENDER_TYPES.FEMALE : GENDER_TYPES.OTHER,
       // Prefer genderInterests, fallback to gederInterests, fallback to preferences.genders
       genderInterests:
-        Array.isArray(profile.gederInterests) && profile.gederInterests.length > 0
-          ? profile.gederInterests
-          : [],
-      minAgePreference:
-        typeof profile.minAgePreference === "number"
-          ? profile.minAgePreference
-          : 18,
-      maxAgePreference:
-        typeof profile.maxAgePreference === "number"
-          ? profile.maxAgePreference
-          : 98,
+        Array.isArray(profile.gederInterests) && profile.gederInterests.length > 0 ? profile.gederInterests : [],
+      minAgePreference: typeof profile.minAgePreference === "number" ? profile.minAgePreference : 18,
+      maxAgePreference: typeof profile.maxAgePreference === "number" ? profile.maxAgePreference : 98,
       // Main picture: prefer avatar, else first secondary image
       mainPicture:
         typeof profile.avatar === "string" && profile.avatar
@@ -106,9 +77,7 @@ const EditProfileScreen = () => {
           : Array.isArray(profile.secondaryImages) && profile.secondaryImages.length > 0
           ? profile.secondaryImages[0]
           : "",
-      secondaryImages: Array.isArray(profile.secondaryImages)
-        ? profile.secondaryImages
-        : [],
+      secondaryImages: Array.isArray(profile.secondaryImages) ? profile.secondaryImages : [],
     },
   });
 
@@ -116,54 +85,21 @@ const EditProfileScreen = () => {
   useEffect(() => {
     setValue("alias", typeof profile.alias === "string" ? profile.alias : "");
     setValue("birthDate", formatBirthDate(profile.birthDate));
-    setValue(
-      "biography",
-      typeof profile.biography === "string" ? profile.biography : ""
-    );
+    setValue("biography", typeof profile.biography === "string" ? profile.biography : "");
     setValue(
       "gender",
-      profile.gender === 1
-        ? GENDER_TYPES.MALE
-        : profile.gender === 2
-        ? GENDER_TYPES.FEMALE
-        : GENDER_TYPES.OTHER
+      profile.gender === 1 ? GENDER_TYPES.MALE : profile.gender === 2 ? GENDER_TYPES.FEMALE : GENDER_TYPES.OTHER
     );
-    setValue(
-      "genderInterests",
-      Array.isArray(profile.gederInterests) ? profile.gederInterests : []
-    );
-    setValue(
-      "minAgePreference",
-      typeof profile.minAgePreference === "number"
-        ? profile.minAgePreference
-        : 18
-    );
-    setValue(
-      "maxAgePreference",
-      typeof profile.maxAgePreference === "number"
-        ? profile.maxAgePreference
-        : 98
-    );
+    setValue("genderInterests", Array.isArray(profile.gederInterests) ? profile.gederInterests : []);
+    setValue("minAgePreference", typeof profile.minAgePreference === "number" ? profile.minAgePreference : 18);
+    setValue("maxAgePreference", typeof profile.maxAgePreference === "number" ? profile.maxAgePreference : 98);
     setValue("mainPicture", initialMainPicture);
-    setValue(
-      "secondaryImages",
-      Array.isArray(profile.secondaryImages) ? profile.secondaryImages : []
-    );
+    setValue("secondaryImages", Array.isArray(profile.secondaryImages) ? profile.secondaryImages : []);
     setMainPicture(initialMainPicture);
-    setSecondaryImages(
-      Array.isArray(profile.secondaryImages) ? profile.secondaryImages : []
-    );
-    setMinAge(
-      typeof profile.minAgePreference === "number"
-        ? profile.minAgePreference
-        : 18
-    );
-    setMaxAge(
-      typeof profile.maxAgePreference === "number"
-        ? profile.maxAgePreference
-        : 98
-    );
-  }, [profile, setValue]);
+    setSecondaryImages(Array.isArray(profile.secondaryImages) ? profile.secondaryImages : []);
+    setMinAge(typeof profile.minAgePreference === "number" ? profile.minAgePreference : 18);
+    setMaxAge(typeof profile.maxAgePreference === "number" ? profile.maxAgePreference : 98);
+  }, [initialMainPicture, profile, setValue]);
 
   // --- Image Picker Logic ---
   const pickImage = async (isMain: boolean, index?: number) => {
@@ -173,7 +109,7 @@ const EditProfileScreen = () => {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -205,42 +141,30 @@ const EditProfileScreen = () => {
   };
 
   // --- Update Service ---
-  const updateProfileMutation = useUpdateUserProfileService();
+  const updateProfileMutation = useUpdateMyUserProfileInformation();
 
   const onSubmit = (data: EditProfileForm) => {
     if (minAge > maxAge) {
-      Alert.alert(
-        "Rango de edad inválido",
-        "La edad mínima no puede ser mayor que la máxima."
-      );
+      Alert.alert("Rango de edad inválido", "La edad mínima no puede ser mayor que la máxima.");
       return;
     }
-    updateProfileMutation.mutate({
-      id: profile.profileId || "",
+    updateProfileMutation.updateMyProfile({
       userId: profile.userId,
       alias: data.alias,
       biography: data.biography,
-      birthDate: parseBirthDate(data.birthDate),
-      gender:
-        data.gender === GENDER_TYPES.MALE
-          ? 1
-          : data.gender === GENDER_TYPES.FEMALE
-          ? 2
-          : 3,
+      birthDate: parseBirthDate(data.birthDate) ? parseBirthDate(data.birthDate)!.toISOString() : undefined,
+      gender: data.gender === GENDER_TYPES.MALE ? 1 : data.gender === GENDER_TYPES.FEMALE ? 2 : 3,
       genderInterests: data.genderInterests,
       avatar: mainPicture,
       secondaryImages,
       address: profile.address,
-      lastOnline: profile.lastOnline ? new Date(profile.lastOnline) : undefined,
-      latitude:
-        typeof profile.latitude === "number" ? profile.latitude : undefined,
-      longitude:
-        typeof profile.longitude === "number" ? profile.longitude : undefined,
+      lastOnline: profile.lastOnline ? new Date(profile.lastOnline).toISOString() : undefined,
+      latitude: typeof profile.latitude === "number" ? profile.latitude : undefined,
+      longitude: typeof profile.longitude === "number" ? profile.longitude : undefined,
       isOnboarded: profile.isOnboarded,
       isActive: profile.isActive,
       name: profile.alias || "",
       email: "",
-      isVerified: false,
       createdAt: new Date(),
       updatedAt: new Date(),
       // preferences is omitted if not present in store
@@ -249,18 +173,11 @@ const EditProfileScreen = () => {
 
   useEffect(() => {
     if (updateProfileMutation.isSuccess) {
-      Alert.alert(
-        "Perfil actualizado",
-        "Tus datos han sido actualizados correctamente."
-      );
+      Alert.alert("Perfil actualizado", "Tus datos han sido actualizados correctamente.");
     } else if (updateProfileMutation.isError) {
-      Alert.alert(
-        "Error",
-        "No se pudo actualizar el perfil. Intenta de nuevo."
-      );
+      Alert.alert("Error", "No se pudo actualizar el perfil. Intenta de nuevo.");
     }
     // Only run on mutation state change
-
   }, [updateProfileMutation.isSuccess, updateProfileMutation.isError]);
 
   console.log(JSON.stringify(profile, null, 2));
@@ -273,21 +190,14 @@ const EditProfileScreen = () => {
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text className="text-3xl font-bold text-[#1B1B1F] mt-2 mb-4">
-          Edita tu perfil
-        </Text>
+        <Text className="text-3xl font-bold text-[#1B1B1F] mt-2 mb-4">Edita tu perfil</Text>
         <VStack space="lg">
           {/* Alias */}
           <Controller
             control={control}
             name="alias"
             render={({ field: { onChange, value } }) => (
-              <CustomInputText
-                label="Nombre a mostrar"
-                value={value}
-                setValue={onChange}
-                placeholder="Tu Nombre"
-              />
+              <CustomInputText label="Nombre a mostrar" value={value} setValue={onChange} placeholder="Tu Nombre" />
             )}
           />
           {/* Fecha de nacimiento */}
@@ -295,12 +205,7 @@ const EditProfileScreen = () => {
             control={control}
             name="birthDate"
             render={({ field: { onChange, value } }) => (
-              <CustomInputDate
-                label="Fecha de nacimiento"
-                value={value}
-                setValue={onChange}
-                placeholder="DD/MM/AAAA"
-              />
+              <CustomInputDate label="Fecha de nacimiento" value={value} setValue={onChange} placeholder="DD/MM/AAAA" />
             )}
           />
           {/* Biografía */}
@@ -316,13 +221,8 @@ const EditProfileScreen = () => {
                   placeholder="Descríbete para hacer nuevos amigos"
                   maxLength={250}
                 />
-                <Text
-                  className="text-red-500 text-xs mt-1"
-                  style={{ minHeight: 18 }}
-                >
-                  {errors.biography?.message
-                    ? String(errors.biography.message)
-                    : " "}
+                <Text className="text-red-500 text-xs mt-1" style={{ minHeight: 18 }}>
+                  {errors.biography?.message ? String(errors.biography.message) : " "}
                 </Text>
               </>
             )}
@@ -333,9 +233,7 @@ const EditProfileScreen = () => {
             name="gender"
             render={({ field: { onChange, value } }) => (
               <VStack className="mt-3">
-                <Text className="text-[#35313D] mb-3 font-medium text-base">
-                  Tu Género
-                </Text>
+                <Text className="text-[#35313D] mb-3 font-medium text-base">Tu Género</Text>
                 <HStack space="xl" className="items-center">
                   <CustomRadioButton
                     label="Hombre"
@@ -356,10 +254,7 @@ const EditProfileScreen = () => {
                     onSelect={onChange}
                   />
                 </HStack>
-                <Text
-                  className="text-red-500 text-xs mt-1"
-                  style={{ minHeight: 18 }}
-                >
+                <Text className="text-red-500 text-xs mt-1" style={{ minHeight: 18 }}>
                   {errors.gender?.message ? String(errors.gender.message) : " "}
                 </Text>
               </VStack>
@@ -371,19 +266,13 @@ const EditProfileScreen = () => {
             name="genderInterests"
             render={({ field: { onChange, value } }) => {
               // Always mark the correct radio based on value
-              const isFemale =
-                value?.length === 1 && value[0] === INTEREST_TYPES.FEMALE;
-              const isMale =
-                value?.length === 1 && value[0] === INTEREST_TYPES.MALE;
+              const isFemale = value?.length === 1 && value[0] === INTEREST_TYPES.FEMALE;
+              const isMale = value?.length === 1 && value[0] === INTEREST_TYPES.MALE;
               const isBoth =
-                value?.length === 2 &&
-                value.includes(INTEREST_TYPES.MALE) &&
-                value.includes(INTEREST_TYPES.FEMALE);
+                value?.length === 2 && value.includes(INTEREST_TYPES.MALE) && value.includes(INTEREST_TYPES.FEMALE);
               return (
                 <VStack className="mt-3">
-                  <Text className="text-[#35313D] mb-3 font-medium text-base">
-                    Quiero conocer
-                  </Text>
+                  <Text className="text-[#35313D] mb-3 font-medium text-base">Quiero conocer</Text>
                   <HStack space="md">
                     <CustomRadioButton
                       label="Mujeres"
@@ -401,18 +290,11 @@ const EditProfileScreen = () => {
                       label="Ambos"
                       value="both"
                       selectedValue={isBoth ? "both" : ""}
-                      onSelect={() =>
-                        onChange([INTEREST_TYPES.MALE, INTEREST_TYPES.FEMALE])
-                      }
+                      onSelect={() => onChange([INTEREST_TYPES.MALE, INTEREST_TYPES.FEMALE])}
                     />
                   </HStack>
-                  <Text
-                    className="text-red-500 text-xs mt-1"
-                    style={{ minHeight: 18 }}
-                  >
-                    {errors.genderInterests?.message
-                      ? String(errors.genderInterests.message)
-                      : " "}
+                  <Text className="text-red-500 text-xs mt-1" style={{ minHeight: 18 }}>
+                    {errors.genderInterests?.message ? String(errors.genderInterests.message) : " "}
                   </Text>
                 </VStack>
               );
@@ -421,13 +303,9 @@ const EditProfileScreen = () => {
           {/* Rango de edad */}
           <VStack className="mt-3">
             <HStack className="justify-between items-center mb-2">
-              <Text className="font-bold text-lg text-[#1B1B1F]">
-                Rango de edad
-              </Text>
+              <Text className="font-bold text-lg text-[#1B1B1F]">Rango de edad</Text>
               <Text className="text-[#35313D] text-base font-medium">
-                {maxAge >= 98
-                  ? `${minAge} a 98 años`
-                  : `${minAge} a ${maxAge} años`}
+                {maxAge >= 98 ? `${minAge} a 98 años` : `${minAge} a ${maxAge} años`}
               </Text>
             </HStack>
             <CustomInputRangeSlider
@@ -444,15 +322,9 @@ const EditProfileScreen = () => {
           </VStack>
           {/* Pictures Section - Onboarding Style */}
           <VStack className="mt-8 items-center w-full">
-            <Text className="text-2xl font-bold text-black text-left mb-2">
-              ¡Que se vea ese flow! ✨
-            </Text>
-            <Text className="text-gray-600 text-left text-base mb-2">
-              Elige una o varias fotos que te represente.
-            </Text>
-            <Text className="text-gray-600 text-left text-base mb-4">
-              Tranquilo, nada formal 😉
-            </Text>
+            <Text className="text-2xl font-bold text-black text-left mb-2">¡Que se vea ese flow! ✨</Text>
+            <Text className="text-gray-600 text-left text-base mb-2">Elige una o varias fotos que te represente.</Text>
+            <Text className="text-gray-600 text-left text-base mb-4">Tranquilo, nada formal 😉</Text>
             {/* Main Picture */}
             <View className="items-center mb-8">
               <TouchableOpacity
@@ -534,10 +406,7 @@ const EditProfileScreen = () => {
               onPress={handleSubmit(onSubmit)}
               disabled={!isValid || updateProfileMutation.isPending}
               style={{
-                backgroundColor:
-                  !isValid || updateProfileMutation.isPending
-                    ? "#B0E0EF"
-                    : "#7CDAF9",
+                backgroundColor: !isValid || updateProfileMutation.isPending ? "#B0E0EF" : "#7CDAF9",
                 borderRadius: 24,
                 paddingVertical: 16,
                 paddingHorizontal: 48,
@@ -554,11 +423,7 @@ const EditProfileScreen = () => {
               {updateProfileMutation.isPending ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text
-                  style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}
-                >
-                  Actualizar
-                </Text>
+                <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>Actualizar</Text>
               )}
             </TouchableOpacity>
           </View>
