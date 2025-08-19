@@ -6,20 +6,147 @@ import {
   UserProfileResponse,
 } from "@/src/domain/models/user-profile.models";
 import { getAuthenticatedUser } from "@/src/utils/getAuthenticatedUser";
-
 import { supabase } from "@/src/utils/supabase";
 
 export class UserProfileController {
   async findUserProfileByUserId(userId: string): Promise<UserProfileResponse> {
-    throw new Error("Method not implemented.");
+    // Fetch profile
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+
+    if (profileError || !profile) {
+      throw new Error("User profile not found: " + (profileError?.message || "Not found"));
+    }
+
+    // Fetch preferences
+    const { data: preferences, error: preferencesError } = await supabase
+      .from("preferences")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+
+    if (preferencesError && preferencesError.code !== "PGRST116") {
+      throw new Error("Error fetching user preferences: " + preferencesError.message);
+    }
+
+    // Fetch user info from auth.users
+    const { data: user, error: userError } = await supabase.from("users").select("*").eq("id", userId).single();
+
+    if (userError && userError.code !== "PGRST116") {
+      throw new Error("Error fetching user info: " + userError.message);
+    }
+
+    // Compose UserProfileResponse
+    const response: UserProfileResponse = {
+      ...profile,
+      preferences: preferences ?? null,
+      user: user ?? null,
+    };
+
+    return response;
   }
 
   async updateMyUserProfile(userProfileData: UpdateUserProfileRequest): Promise<boolean> {
-    throw new Error("Method not implemented.");
+    const user = await getAuthenticatedUser();
+
+    // Destructure and map fields, excluding latitude and longitude
+    const {
+      alias,
+      gender,
+      avatar,
+      biography,
+      birthDate,
+      isOnboarded,
+      isVerified,
+      isActive,
+      address,
+      secondary_images,
+      minAge,
+      maxAge,
+      maxDistance,
+      genders,
+    } = userProfileData;
+
+    // Build update object for profiles table (exclude latitude/longitude)
+    const profileUpdate: any = {};
+    if (alias !== undefined) profileUpdate.alias = alias;
+    if (gender !== undefined) profileUpdate.gender = gender;
+    if (avatar !== undefined) profileUpdate.avatar = avatar;
+    if (biography !== undefined) profileUpdate.biography = biography;
+    if (birthDate !== undefined) profileUpdate.birth_date = birthDate;
+    if (isOnboarded !== undefined) profileUpdate.is_onboarded = isOnboarded;
+    if (isVerified !== undefined) profileUpdate.is_verified = isVerified;
+    if (isActive !== undefined) profileUpdate.is_active = isActive;
+    if (address !== undefined) profileUpdate.address = address;
+    if (secondary_images !== undefined) profileUpdate.secondary_images = secondary_images;
+    profileUpdate.updated_at = new Date().toISOString();
+
+    // Update profile
+    if (Object.keys(profileUpdate).length > 1) {
+      // more than just updated_at
+      const { error: profileError } = await supabase.from("profiles").update(profileUpdate).eq("user_id", user.id);
+
+      if (profileError) {
+        throw new Error("Error updating user profile: " + profileError.message);
+      }
+    }
+
+    // Update preferences if any relevant field is present
+    const preferencesUpdate: any = {};
+    if (minAge !== undefined) preferencesUpdate.min_age = minAge;
+    if (maxAge !== undefined) preferencesUpdate.max_age = maxAge;
+    if (maxDistance !== undefined) preferencesUpdate.max_distance = maxDistance;
+    if (genders !== undefined) preferencesUpdate.genders = genders;
+
+    if (Object.keys(preferencesUpdate).length > 0) {
+      // Check if preferences exist
+      const { data: existingPrefs, error: checkPrefsError } = await supabase
+        .from("preferences")
+        .select("id")
+        .eq("user_id", user.id);
+
+      if (checkPrefsError) {
+        throw new Error("Error checking preferences: " + checkPrefsError.message);
+      }
+
+      if (existingPrefs && existingPrefs.length > 0) {
+        // Update
+        const { error: updatePrefsError } = await supabase
+          .from("preferences")
+          .update(preferencesUpdate)
+          .eq("user_id", user.id);
+        if (updatePrefsError) {
+          throw new Error("Error updating preferences: " + updatePrefsError.message);
+        }
+      } else {
+        // Insert
+        const { error: insertPrefsError } = await supabase
+          .from("preferences")
+          .insert([{ ...preferencesUpdate, user_id: user.id }]);
+        if (insertPrefsError) {
+          throw new Error("Error creating preferences: " + insertPrefsError.message);
+        }
+      }
+    }
+
+    return true;
   }
 
   async deleteMyUserProfile(): Promise<boolean> {
-    throw new Error("Method not implemented.");
+    const user = await getAuthenticatedUser();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq("user_id", user.id);
+
+    if (error) {
+      throw new Error("Error deactivating user profile: " + error.message);
+    }
+
+    return true;
   }
 
   async listNearbyProfiles(maxDistance: number): Promise<ExtendedUserProfileResponse[]> {
@@ -199,37 +326,69 @@ export class UserProfileController {
   }
 
   async listMyMatches(): Promise<ExtendedUserProfileResponse[]> {
-    throw new Error("Method not implemented.");
+    const user = await getAuthenticatedUser();
+
+    // Find all matches where the user is either swiper or target
+    const { data: matches, error } = await supabase
+      .from("interactions")
+      .select("swiper_user_id, target_user_id")
+      .eq("is_match", true)
+      .or(`swiper_user_id.eq.${user.id},target_user_id.eq.${user.id}`);
+
+    if (error) {
+      throw new Error("Error fetching matches: " + error.message);
+    }
+
+    // Get the other user in each match
+    const matchedUserIds = new Set<string>();
+    (matches ?? []).forEach((m: any) => {
+      if (m.swiper_user_id === user.id) {
+        matchedUserIds.add(m.target_user_id);
+      } else if (m.target_user_id === user.id) {
+        matchedUserIds.add(m.swiper_user_id);
+      }
+    });
+
+    if (matchedUserIds.size === 0) {
+      return [];
+    }
+
+    // Fetch profiles for matched users
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("user_id", Array.from(matchedUserIds));
+
+    if (profilesError) {
+      throw new Error("Error fetching matched profiles: " + profilesError.message);
+    }
+
+    // Optionally, join with preferences or other info as needed for ExtendedUserProfileResponse
+    // For now, return the profiles as ExtendedUserProfileResponse[]
+    return profiles as ExtendedUserProfileResponse[];
   }
 
   async createSwipe(swipeRequest: CreateSwipeRequest): Promise<boolean> {
-    const { user_id, target_user_id, is_liked } = swipeRequest;
+    const user = await getAuthenticatedUser();
+    const { targetUserId, liked } = swipeRequest;
 
-    if (!user_id) {
-      throw new Error("❌ user_id is required for 'post'");
-    }
-    if (!target_user_id || typeof is_liked === "undefined") {
-      throw new Error("❌ target_user_id and is_liked are required for 'post'");
+    if (!targetUserId || typeof liked !== "boolean") {
+      throw new Error("targetUserId and liked are required");
     }
 
-    // Insert swipe (interaction)
-    const { data, error } = await supabase
-      .from("interactions")
-      .insert([
-        {
-          swiper_user_id: user_id,
-          target_user_id,
-          is_liked: is_liked === true,
-        },
-      ])
-      .select();
+    const { error } = await supabase.from("interactions").insert([
+      {
+        swiper_user_id: user.id,
+        target_user_id: targetUserId,
+        is_liked: liked,
+        is_match: false,
+      },
+    ]);
 
-    if (error || !data || data.length === 0) {
-      throw new Error(
-        "❌ Error creating swipe: " + (error?.message || "Unknown error")
-      );
+    if (error) {
+      throw new Error("Error creating swipe: " + error.message);
     }
 
-    return { swipe: data[0] as Swipe };
+    return true;
   }
 }
