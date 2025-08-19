@@ -1,16 +1,24 @@
 import {
+  fetchMyChatMessages,
   fetchMyChats,
+  useCreateChat,
   useFindMyChats,
+  useGetMyChatMessages,
   useMarkAllMessagesFromChatAsRead as useRepoMarkAllMessagesFromChatAsRead,
+  useSendMessageToChat,
 } from "@/src/infraestructure/repositories/ChatRepositoryImpl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useChatListStore } from "../stores/chat-list.store";
+import { useCurrentChatMessagesStore } from "../stores/current-chat-messages.store";
+
+/**
+ * Hook to send a message to a chat and sync with currentChatStore and chatListStore.
+ */
+import { Message } from "@/src/domain/entities/Message";
 
 /**
  * Hook to mark all messages from a chat as read and sync with currentChatStore.
  */
-import { useCurrentChatMessagesStore } from "../stores/current-chat-messages.store";
-
 export function useGetChatsService(page: number = 1, perPage: number = 20) {
   const { data: myFetchedChats, isLoading, isError } = useFindMyChats(page, perPage);
   const setChats = useChatListStore((s) => s.setChats);
@@ -73,17 +81,126 @@ export function useGetMoreChatsService() {
 /**
  * Hook to create a chat and sync with chatListStore.
  */
-export function useCreateChatService() {}
+export function useCreateChatService() {
+  const addChat = useChatListStore((s) => s.addChat);
+  const mutation = useCreateChat();
+  const createChat = (chatData: any, onError?: (error: any) => void) => {
+    mutation.mutate(chatData, {
+      onSuccess: (newChat: any) => {
+        if (newChat && newChat.chatId) {
+          addChat(newChat);
+        }
+      },
+      onError: (error: any) => {
+        if (onError) {
+          onError(error);
+        }
+      },
+    });
+  };
+
+  return {
+    createChat,
+    isLoading: mutation.status === "pending",
+    isError: mutation.status === "error",
+    error: mutation.error,
+    isSuccess: mutation.status === "success",
+    data: mutation.data,
+  };
+}
 
 /**
- * Hook to fetch all messages for a chat and sync with currentChatStore.
+ * Hook to fetch initial messages for a chat and sync with currentChatStore.
  */
-export function useGetChatMessagesService(chatId: string, page: number = 1, perPage: number = 20) {}
+export function useGetChatMessagesService(chatId: string, page: number = 1, perPage: number = 20) {
+  const { data: fetchedMessages, isLoading, isError } = useGetMyChatMessages(chatId, page, perPage);
+  const setInitialMessages = useCurrentChatMessagesStore((s) => s.setInitialMessages);
+  const total = useCurrentChatMessagesStore((s) => s.total);
+
+  // Sync fetched messages to store only if store is empty
+  useEffect(() => {
+    if (fetchedMessages && Array.isArray(fetchedMessages.messages) && total === 0) {
+      setInitialMessages(
+        fetchedMessages.messages,
+        fetchedMessages.page,
+        fetchedMessages.perPage,
+        fetchedMessages.total,
+        fetchedMessages.hasMore
+      );
+    }
+  }, [fetchedMessages, setInitialMessages, total]);
+
+  return {
+    messages: useCurrentChatMessagesStore((s) => s.getOrderedMessages()),
+    isLoading,
+    isError,
+    total,
+  };
+}
+
+/**
+ * Hook to fetch more messages for a chat and sync with currentChatStore.
+ */
+export function useGetMoreChatMessagesService(chatId: string, page: number = 1, perPage: number = 20) {
+  const appendMessages = useCurrentChatMessagesStore((s) => s.appendMessages);
+  const hasMore = useCurrentChatMessagesStore((s) => s.hasMore);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadMoreMessages = useCallback(async () => {
+    if (!hasMore) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const fetched = await fetchMyChatMessages(chatId, page, perPage);
+      if (fetched && Array.isArray(fetched.messages) && fetched.messages.length > 0) {
+        appendMessages(fetched.messages, fetched.page, fetched.perPage);
+      }
+    } catch (err: any) {
+      setError(err?.message || "An error occurred while loading more messages.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [appendMessages, chatId, page, perPage, hasMore]);
+
+  return { loadMoreMessages, hasMore, page, perPage, isLoading, error };
+}
 
 /**
  * Hook to send a message to a chat and sync with currentChatStore and chatListStore.
  */
-export function useSendMessageToChatService() {}
+export function useSendMessageToChatService(chatId: string) {
+  const mutation = useSendMessageToChat();
+  const addMessage = useCurrentChatMessagesStore((s) => s.addMessage);
+  const updateChatLastMessage = useChatListStore((s) => s.updateChatLastMessage);
+  const sendMessage = (message: Partial<Message>) => {
+    mutation.mutate(
+      { chatId, message },
+      {
+        onSuccess: (_data, _variables, _context) => {
+          addMessage(message as Message);
+          updateChatLastMessage(chatId, {
+            id: (message as any).messageId ?? "",
+            content: message.content ?? "",
+            status: message.status ?? "sent",
+            isByMe: true,
+            createdAt:
+              typeof message.createdAt === "string"
+                ? message.createdAt
+                : message.createdAt instanceof Date
+                ? message.createdAt.toISOString()
+                : new Date().toISOString(),
+          });
+        },
+      }
+    );
+  };
+
+  return {
+    sendMessage,
+    ...mutation,
+  };
+}
 
 /**
  * Hook to mark all messages from a chat as read and sync with currentChatStore.

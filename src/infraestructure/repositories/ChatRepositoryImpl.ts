@@ -46,17 +46,31 @@ export async function fetchMyChats(page: number, perPage: number): Promise<Pagin
 }
 
 /**
+ * Imperative fetch for paginated messages for a chat, using react-query's cache if available.
+ * @param chatId The chat ID
+ * @param page The page number (starting from 1)
+ * @param perPage The number of messages per page
+ * @returns Promise with paginated messages and metadata (from cache or network)
+ */
+export async function fetchMyChatMessages(chatId: string, page: number, perPage: number): Promise<PaginatedMessages> {
+  const queryKey = ["chat", "getAllMyChatMessages", chatId, page, perPage];
+  // Use react-query cache if available, otherwise fetch and cache
+  const data = queryClient.getQueryData<PaginatedMessages>(queryKey);
+  if (data) return data;
+  return await queryClient.fetchQuery<PaginatedMessages>({
+    queryKey,
+    queryFn: () => datasource.getAllMyChatMessages(chatId, page, perPage),
+  });
+}
+
+/**
  * Returns paginated messages for a chat.
  * @param chatId The chat ID
  * @param page The page number (starting from 1)
  * @param perPage The number of messages per page
  * @returns UseQueryResult with paginated messages and metadata
  */
-export function useGetAllMyChatMessages(
-  chatId: string,
-  page: number,
-  perPage: number
-): UseQueryResult<PaginatedMessages> {
+export function useGetMyChatMessages(chatId: string, page: number, perPage: number): UseQueryResult<PaginatedMessages> {
   return useQuery({
     queryKey: ["chat", "getAllMyChatMessages", chatId, page, perPage],
     queryFn: () => datasource.getAllMyChatMessages(chatId, page, perPage),
