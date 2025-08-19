@@ -12,6 +12,7 @@ import {
 } from "@/src/infraestructure/repositories/UserProfileRepositoryImpl";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import { useOnboardingStore } from "@/src/presentation/stores/onboarding.store";
+import { getCurrentLocation } from "@/src/utils/location";
 import { useEffect } from "react";
 import { useCurrentUserProfileStore } from "../stores/current-user-profile.store";
 import { useNearbySwipeableProfilesStore } from "../stores/nearby-swipeable-profiles.store";
@@ -142,15 +143,22 @@ export function useUpdateMyUserCurrentLocation() {
   const setProfile = useAuthUserProfileStore((s) => s.setProfile);
   const mutation = useUpdateMyLocation();
 
-  const updateLocation = ({ latitude, longitude }: { latitude: number; longitude: number }) => {
-    mutation.mutate(
-      { latitude, longitude },
-      {
-        onSuccess: () => {
-          setProfile({ latitude, longitude });
-        },
-      }
-    );
+  const updateLocation = async () => {
+    try {
+      const { latitude, longitude } = await getCurrentLocation();
+      mutation.mutate(
+        { latitude, longitude },
+        {
+          onSuccess: () => {
+            setProfile({ latitude, longitude });
+          },
+        }
+      );
+    } catch (error) {
+      // Optionally, handle error (e.g., show alert, log, etc.)
+      // For now, just log
+      console.error("Failed to update location:", error);
+    }
   };
 
   return {
@@ -209,7 +217,22 @@ export function useOnboardMyUserService() {
   const onboard = (profile: Partial<UserProfile>) => {
     mutation.mutate(profile, {
       onSuccess: (data: any) => {
-        setProfile(data);
+        // LOG: Backend response after onboarding
+        console.log("[ONBOARDING] Backend response:", JSON.stringify(data, null, 2));
+        // Map secondary_images (snake_case) to secondaryImages (camelCase) for the store
+        const mappedData = {
+          ...data,
+          secondaryImages: data.secondary_images || [],
+        };
+        setProfile(mappedData);
+        // LOG: Store value after setProfile
+        setTimeout(() => {
+          const store = require("@/src/presentation/stores/auth-user-profile.store");
+          // If using Zustand, getState is available
+          if (store && store.useAuthUserProfileStore && store.useAuthUserProfileStore.getState) {
+            console.log("[ONBOARDING] Store after setProfile:", JSON.stringify(store.useAuthUserProfileStore.getState(), null, 2));
+          }
+        }, 200);
         resetOnboarding();
       },
     });

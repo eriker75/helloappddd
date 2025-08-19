@@ -124,8 +124,8 @@ const AddYourPicturesScreen = () => {
   useEffect(() => {
     const checkValidation = async () => {
       const isValid = await validateOnboardingStep(3, {
-        avatar,
-        secondaryImages,
+        mainPicture: avatar,
+        secondaryPictures: secondaryImages,
       });
       setIsValidStep(isValid);
     };
@@ -134,8 +134,8 @@ const AddYourPicturesScreen = () => {
 
   const handleContinue = async () => {
     const isValid = await validateOnboardingStep(3, {
-      avatar,
-      secondaryImages,
+      mainPicture: avatar,
+      secondaryPictures: secondaryImages,
     });
     if (isValid) {
       router.push("/onboarding/location");

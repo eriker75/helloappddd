@@ -1,6 +1,7 @@
 import { Box, HStack, Pressable, Text, VStack } from "@/components/ui";
 import { Textarea, TextareaInput } from "@/components/ui/textarea";
 import { useGetChatMessagesService, useSendMessageToChatService } from "@/src/presentation/services/ChatService";
+import { useCurrentChatMessagesStore } from "@/src/presentation/stores/current-chat-messages.store";
 import formatMessageTime from "@/src/utils/formatMessageTime";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -126,7 +127,11 @@ const ChatScreen = () => {
   const { chatId } = useLocalSearchParams<{ chatId: string }>();
 
   // Use service hook for fetching and syncing messages
-  const { messages: storeMessages, isLoading, isError } = useGetChatMessagesService(chatId || "");
+  // Use a selector that returns a stable array reference
+  const storeMessages = useCurrentChatMessagesStore(
+    (s: any) => s.orderedMessageIds.map((id: string) => s.messages[id])
+  );
+  const { isLoading, isError } = useGetChatMessagesService(chatId || "");
 
   // Use service hook for sending messages
   const { sendMessage, status } = useSendMessageToChatService(chatId || "");
@@ -184,12 +189,12 @@ const ChatScreen = () => {
             <FlatList
               ref={flatListRef}
               data={storeMessages}
-              keyExtractor={(item, idx) => `${item.messageId}-${item.createdAt}-${idx}`}
+              keyExtractor={(item, idx) => item?.messageId ? String(item.messageId) : `msg-${idx}`}
               renderItem={({ item, index }) => (
-                <>
+                <Box>
                   {index === 0 && <DateSeparator label="Hoy" />}
                   <ChatBubble text={item.content || ""} fromMe={false} time={item.createdAt} />
-                </>
+                </Box>
               )}
               contentContainerStyle={styles.messagesContainer}
               showsVerticalScrollIndicator={false}

@@ -5,6 +5,7 @@ import CustomInputTextarea from "@/components/forms/CustomInputTextarea";
 import CustomRadioButton from "@/components/forms/CustomRadioButton";
 import { OnboardingScreenLayout } from "@/components/layouts/OnboardingScreenLayout";
 import { HStack, Text, VStack } from "@/components/ui";
+import { Slider, SliderFilledTrack, SliderThumb, SliderTrack } from "@/components/ui/slider";
 import { GENDER_TYPES } from "@/src/definitions/constants/GENDER_TYPES";
 import { INTEREST_TYPES } from "@/src/definitions/constants/INTEREST_TYPES";
 import { useOnboardingStore } from "@/src/presentation/stores/onboarding.store";
@@ -25,6 +26,8 @@ const BasicInfoScreen = () => {
   const maxAgePreference = useOnboardingStore((state) => state.maxAgePreference);
   const setMinAgePreference = useOnboardingStore((state) => state.setMinAgePreference);
   const setMaxAgePreference = useOnboardingStore((state) => state.setMaxAgePreference);
+  const maxDistancePreference = useOnboardingStore((state) => state.maxDistancePreference);
+  const setMaxDistance = useOnboardingStore((state) => state.setMaxDistance);
   const setAlias = useOnboardingStore((state) => state.setAlias);
   const setBirthDate = useOnboardingStore((state) => state.setBirthDate);
   const setBiography = useOnboardingStore((state) => state.setBiography);
@@ -125,7 +128,7 @@ const BasicInfoScreen = () => {
           ¡Arma tu perfil en un toque!
         </Text>
 
-        <VStack space="lg" className="mt-6">
+        <VStack space="md" className="mt-6">
           {/* Alias */}
           <Controller
             control={control}
@@ -167,8 +170,8 @@ const BasicInfoScreen = () => {
                   placeholder="Descríbete para hacer nuevos amigos"
                   maxLength={250}
                 />
-                <Text className="text-red-500 text-xs mt-1" style={{ minHeight: 18 }}>
-                  {errors.bio?.message ? String(errors.bio.message) : " "}
+                <Text className="text-red-500 text-xs" style={{ minHeight: 0, marginTop: 2 }}>
+                  {errors.bio?.message ? String(errors.bio.message) : ""}
                 </Text>
               </>
             )}
@@ -179,7 +182,7 @@ const BasicInfoScreen = () => {
             control={control}
             name="gender"
             render={({ field: { onChange, value } }) => (
-              <VStack className="mt-3">
+              <VStack>
                 <Text className="text-[#35313D] mb-3 font-medium text-base">
                   Tu Género
                 </Text>
@@ -226,7 +229,7 @@ const BasicInfoScreen = () => {
                 return null;
               };
               return (
-                <VStack className="mt-3">
+                <VStack>
                   <Text className="text-[#35313D] mb-3 font-medium text-base">
                     Quiero conocer
                   </Text>
@@ -271,7 +274,7 @@ const BasicInfoScreen = () => {
           />
 
           {/* Rango de edad */}
-          <VStack className="mt-3">
+          <VStack>
             <HStack className="justify-between items-center mb-2">
               <Text className="font-bold text-lg text-[#1B1B1F]">
                 Rango de edad
@@ -292,6 +295,41 @@ const BasicInfoScreen = () => {
               }}
             />
           </VStack>
+{/* Distancia de búsqueda */}
+<VStack>
+  <HStack className="justify-between items-center mb-2">
+    <Text className="font-bold text-lg text-[#1B1B1F]">
+      Distancia de búsqueda
+    </Text>
+    <Text className="text-[#35313D] text-base font-medium">
+      {maxDistancePreference >= 1010
+        ? "∞ km"
+        : `${maxDistancePreference} km`}
+    </Text>
+  </HStack>
+  <HStack className="w-full px-2">
+    <Slider
+      minValue={10}
+      maxValue={1010}
+      step={1}
+      value={maxDistancePreference}
+      onChange={setMaxDistance}
+      size="lg"
+      accessibilityLabel="Selecciona la distancia máxima de búsqueda"
+      className="w-full"
+    >
+      <SliderTrack className="bg-[#E3F3FA] h-1.5 rounded-lg">
+        <SliderFilledTrack className="bg-[#2EC4F1] data-[focus=true]:bg-[#2EC4F1] data-[active=true]:bg-[#2EC4F1] data-[hover=true]:bg-[#2EC4F1]" />
+      </SliderTrack>
+      <SliderThumb className="bg-white border-2 border-[#E3F3FA] shadow-lg w-8 h-8 data-[focus=true]:bg-white data-[active=true]:bg-white data-[hover=true]:bg-white" />
+    </Slider>
+  </HStack>
+  <Text className="text-xs text-gray-500 mt-2">
+    {maxDistancePreference >= 1010
+      ? "Buscar en cualquier distancia (infinito)"
+      : `Buscar personas hasta ${maxDistancePreference} km`}
+  </Text>
+</VStack>
         </VStack>
       </ScrollView>
     </OnboardingScreenLayout>

@@ -3,7 +3,7 @@ import { Text } from "@/components/ui/text";
 import { useGetCurrentUserProfileByUserId } from "@/src/presentation/services/UserProfileService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Dimensions, ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 
 const { width } = Dimensions.get("window");
@@ -24,20 +24,115 @@ function getExcerpt(text: string, maxLength: number = 140): string {
 
 export default function ProfileScreen() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [signedImages, setSignedImages] = useState<(string | number)[]>([]);
+  const [signedAvatar, setSignedAvatar] = useState<string | null>(null);
+  const [signing, setSigning] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const router = useRouter();
-
-  // Get auth user profile from store for fast initial render
+  const avatar = useAuthUserProfileStore((s) => s.avatar);
+  const secondaryImages = useAuthUserProfileStore((s) => s.secondaryImages);
   const userProfile = useAuthUserProfileStore();
+
+  // Log raw userProfile from store (cyan)
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      console.log(
+        "\x1b[36m[ProfileScreen] Raw userProfile from store:\n" +
+          JSON.stringify(userProfile, null, 2) +
+          "\x1b[0m"
+      );
+    }
+  }, [userProfile]);
+
+  // (removed duplicate router and userProfile declarations)
 
   // Fetch and update profile for authenticated user on mount
   const { isLoading, error } = useGetCurrentUserProfileByUserId(userProfile.userId);
 
-  const images =
-    userProfile?.secondaryImages && userProfile.secondaryImages.length > 0
-      ? userProfile.secondaryImages
-      : [PROFILE_IMAGE];
+  // Utility to extract S3 key from a Supabase Storage URL
+  function extractS3KeyFromUrl(url: string): string | null {
+    // Example: .../helloapp/profiles/uuid/secondary_1.jpg?...  -> profiles/uuid/secondary_1.jpg
+    const match = url.match(/\/helloapp\/(.+?)(\?|$)/);
+    if (match && match[1]) {
+      return match[1];
+    }
+    return null;
+  }
+
+  useEffect(() => {
+    async function signImagesAndAvatar() {
+      if (!secondaryImages || secondaryImages.length === 0) {
+        setSignedImages([PROFILE_IMAGE]);
+      } else {
+        setSigning(true);
+        try {
+          const { getSignedUrlForKey } = await import("@/src/utils/supabaseS3Storage");
+          const promises = secondaryImages.map(async (img: string) => {
+            if (typeof img !== "string") return img;
+            const key = extractS3KeyFromUrl(img);
+            if (!key) return img;
+            try {
+              const signed = await getSignedUrlForKey(key, 3600);
+              return signed;
+            } catch (err) {
+              console.warn("Failed to sign image", img, err);
+              return img;
+            }
+          });
+          const results = await Promise.all(promises);
+          setSignedImages(results);
+
+          // Sign avatar if present
+          if (avatar && typeof avatar === "string") {
+            const avatarKey = extractS3KeyFromUrl(avatar);
+            if (avatarKey) {
+              try {
+                const signedAvatarUrl = await getSignedUrlForKey(avatarKey, 3600);
+                setSignedAvatar(signedAvatarUrl);
+              } catch (err) {
+                console.warn("Failed to sign avatar", avatar, err);
+                setSignedAvatar(avatar);
+              }
+            } else {
+              setSignedAvatar(avatar);
+            }
+          } else {
+            setSignedAvatar(null);
+          }
+        } catch (err) {
+          console.warn("Error importing getSignedUrlForKey or signing images", err);
+          setSignedImages(secondaryImages);
+          setSignedAvatar(avatar ?? null);
+        }
+        setSigning(false);
+      }
+    }
+    signImagesAndAvatar();
+    // Only re-run if the images or avatar change
+
+  }, [secondaryImages, avatar]);
+
+  const images = React.useMemo(
+    () =>
+      signedImages && signedImages.length > 0
+        ? signedImages
+        : [PROFILE_IMAGE],
+    [signedImages]
+  );
+
+  // Log final images array used for rendering (green)
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      console.log(
+        "\x1b[32m[ProfileScreen] Final images array for rendering:\n" +
+          JSON.stringify(images, null, 2) +
+          "\x1b[0m"
+      );
+    }
+  }, [images]);
 
   const handlePrevImage = () => {
     const newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : images.length - 1;
@@ -57,7 +152,7 @@ export default function ProfileScreen() {
     setCurrentImageIndex(currentIndex);
   };
 
-  if (isLoading) {
+  if (isLoading || signing) {
     return (
       <View style={styles.centered}>
         <Text>Cargando perfil...</Text>
@@ -129,7 +224,7 @@ export default function ProfileScreen() {
           {/* Avatar overlapping */}
           <View style={styles.avatarWrapper}>
             <Avatar size="xl">
-              <AvatarImage source={userProfile.avatar ? { uri: userProfile.avatar } : AVATAR_PLACEHOLDER} />
+              <AvatarImage source={signedAvatar ? { uri: signedAvatar } : AVATAR_PLACEHOLDER} />
               <AvatarBadge>
                 <TouchableOpacity style={styles.editBadge}>
                   <Text style={styles.editIcon}>✎</Text>

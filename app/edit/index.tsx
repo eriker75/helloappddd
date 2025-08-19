@@ -9,12 +9,24 @@ import { INTEREST_TYPES } from "@/src/definitions/constants/INTEREST_TYPES";
 import { useUpdateMyUserProfileInformation } from "@/src/presentation/services/UserProfileService";
 import { useCurrentUserProfileStore } from "@/src/presentation/stores/current-user-profile.store";
 import { EditProfileForm, editProfileSchema } from "@/src/presentation/validators/edit-profile.schema";
+import { getSignedUrlForKey } from "@/src/utils/supabaseS3Storage";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { ActivityIndicator, Alert, Image, ScrollView, TouchableOpacity, View } from "react-native";
+
+/**
+ * Extracts the S3 key from a Supabase Storage public URL.
+ * Example:
+ *   https://clotbfxzjhogaqddnetg.storage.supabase.co/storage/v1/s3/helloapp/profiles/df28690d-e65c-429e-96d5-7efbf8887064/1755286698016-684y0b-secondary-0.jpg?...
+ *   => profiles/df28690d-e65c-429e-96d5-7efbf8887064/1755286698016-684y0b-secondary-0.jpg
+ */
+function extractS3KeyFromUrl(url: string): string | null {
+  const match = url.match(/s3\/[^/]+\/(.+?)(\?|$)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
 
 const EditProfileScreen = () => {
   // Store
@@ -44,9 +56,11 @@ const EditProfileScreen = () => {
     (Array.isArray(profile.secondaryImages) && profile.secondaryImages.length > 0 ? profile.secondaryImages[0] : "");
 
   const [mainPicture, setMainPicture] = useState(initialMainPicture);
+  const [mainPictureSignedUrl, setMainPictureSignedUrl] = useState<string>("");
   const [secondaryImages, setSecondaryImages] = useState<string[]>(
     Array.isArray(profile.secondaryImages) ? profile.secondaryImages : []
   );
+  const [secondaryImagesSignedUrls, setSecondaryImagesSignedUrls] = useState<string[]>([]);
   const [minAge, setMinAge] = useState(typeof profile.minAgePreference === "number" ? profile.minAgePreference : 18);
   const [maxAge, setMaxAge] = useState(typeof profile.maxAgePreference === "number" ? profile.maxAgePreference : 98);
 
@@ -67,7 +81,15 @@ const EditProfileScreen = () => {
         profile.gender === 1 ? GENDER_TYPES.MALE : profile.gender === 2 ? GENDER_TYPES.FEMALE : GENDER_TYPES.OTHER,
       // Prefer genderInterests, fallback to gederInterests, fallback to preferences.genders
       genderInterests:
-        Array.isArray(profile.gederInterests) && profile.gederInterests.length > 0 ? profile.gederInterests : [],
+        Array.isArray(profile.genderInterests) && profile.genderInterests.length > 0
+          ? profile.genderInterests.map(String)
+          : Array.isArray(profile.gederInterests) && profile.gederInterests.length > 0
+          ? profile.gederInterests.map(String)
+          : typeof (profile as any).preferences === "object" &&
+            Array.isArray((profile as any).preferences.genders) &&
+            (profile as any).preferences.genders.length > 0
+          ? (profile as any).preferences.genders.map(String)
+          : ["1", "2"], // Default to both if nothing
       minAgePreference: typeof profile.minAgePreference === "number" ? profile.minAgePreference : 18,
       maxAgePreference: typeof profile.maxAgePreference === "number" ? profile.maxAgePreference : 98,
       // Main picture: prefer avatar, else first secondary image
@@ -90,7 +112,18 @@ const EditProfileScreen = () => {
       "gender",
       profile.gender === 1 ? GENDER_TYPES.MALE : profile.gender === 2 ? GENDER_TYPES.FEMALE : GENDER_TYPES.OTHER
     );
-    setValue("genderInterests", Array.isArray(profile.gederInterests) ? profile.gederInterests : []);
+    setValue(
+      "genderInterests",
+      Array.isArray(profile.genderInterests) && profile.genderInterests.length > 0
+        ? profile.genderInterests.map(String)
+        : Array.isArray(profile.gederInterests) && profile.gederInterests.length > 0
+        ? profile.gederInterests.map(String)
+        : typeof (profile as any).preferences === "object" &&
+          Array.isArray((profile as any).preferences.genders) &&
+          (profile as any).preferences.genders.length > 0
+        ? (profile as any).preferences.genders.map(String)
+        : ["1", "2"]
+    );
     setValue("minAgePreference", typeof profile.minAgePreference === "number" ? profile.minAgePreference : 18);
     setValue("maxAgePreference", typeof profile.maxAgePreference === "number" ? profile.maxAgePreference : 98);
     setValue("mainPicture", initialMainPicture);
@@ -100,6 +133,49 @@ const EditProfileScreen = () => {
     setMinAge(typeof profile.minAgePreference === "number" ? profile.minAgePreference : 18);
     setMaxAge(typeof profile.maxAgePreference === "number" ? profile.maxAgePreference : 98);
   }, [initialMainPicture, profile, setValue]);
+
+  // --- Fetch signed URLs for images ---
+  useEffect(() => {
+    async function fetchSignedUrls() {
+      // Main picture
+      let mainUrl = "";
+      if (mainPicture && typeof mainPicture === "string" && mainPicture.startsWith("http")) {
+        const key = extractS3KeyFromUrl(mainPicture);
+        if (key) {
+          try {
+            mainUrl = await getSignedUrlForKey(key);
+          } catch (e) {
+            mainUrl = mainPicture; // fallback to original
+          }
+        } else {
+          mainUrl = mainPicture;
+        }
+      } else {
+        mainUrl = mainPicture;
+      }
+      setMainPictureSignedUrl(mainUrl);
+
+      // Secondary images
+      const signedUrls: string[] = await Promise.all(
+        (secondaryImages || []).map(async (img) => {
+          if (img && typeof img === "string" && img.startsWith("http")) {
+            const key = extractS3KeyFromUrl(img);
+            if (key) {
+              try {
+                return await getSignedUrlForKey(key);
+              } catch (e) {
+                return img;
+              }
+            }
+            return img;
+          }
+          return img;
+        })
+      );
+      setSecondaryImagesSignedUrls(signedUrls);
+    }
+    fetchSignedUrls();
+  }, [mainPicture, secondaryImages]);
 
   // --- Image Picker Logic ---
   const pickImage = async (isMain: boolean, index?: number) => {
@@ -265,11 +341,17 @@ const EditProfileScreen = () => {
             control={control}
             name="genderInterests"
             render={({ field: { onChange, value } }) => {
-              // Always mark the correct radio based on value
-              const isFemale = value?.length === 1 && value[0] === INTEREST_TYPES.FEMALE;
-              const isMale = value?.length === 1 && value[0] === INTEREST_TYPES.MALE;
+              // Normalize value to array of strings
+              let interests = Array.isArray(value) ? value.map(String) : [];
+              if (!Array.isArray(value) || value.length === 0) {
+                interests = ["1", "2"]; // Default to both
+              }
+              const isFemale = interests.length === 1 && interests[0] === INTEREST_TYPES.FEMALE;
+              const isMale = interests.length === 1 && interests[0] === INTEREST_TYPES.MALE;
               const isBoth =
-                value?.length === 2 && value.includes(INTEREST_TYPES.MALE) && value.includes(INTEREST_TYPES.FEMALE);
+                interests.length === 2 &&
+                interests.includes(INTEREST_TYPES.MALE) &&
+                interests.includes(INTEREST_TYPES.FEMALE);
               return (
                 <VStack className="mt-3">
                   <Text className="text-[#35313D] mb-3 font-medium text-base">Quiero conocer</Text>
@@ -322,9 +404,10 @@ const EditProfileScreen = () => {
           </VStack>
           {/* Pictures Section - Onboarding Style */}
           <VStack className="mt-8 items-center w-full">
-            <Text className="text-2xl font-bold text-black text-left mb-2">¡Que se vea ese flow! ✨</Text>
-            <Text className="text-gray-600 text-left text-base mb-2">Elige una o varias fotos que te represente.</Text>
-            <Text className="text-gray-600 text-left text-base mb-4">Tranquilo, nada formal 😉</Text>
+            <Text className="text-2xl font-bold text-black text-left mb-4">Edita tus fotos de perfil</Text>
+            <Text className="text-gray-600 text-left text-base mb-6">
+              Puedes actualizar tus fotos cuando quieras.
+            </Text>
             {/* Main Picture */}
             <View className="items-center mb-8">
               <TouchableOpacity
@@ -337,9 +420,9 @@ const EditProfileScreen = () => {
                   shadowRadius: 4,
                 }}
               >
-                {mainPicture ? (
+                {mainPictureSignedUrl ? (
                   <Image
-                    source={{ uri: mainPicture }}
+                    source={{ uri: mainPictureSignedUrl }}
                     className="w-full h-full rounded-full"
                     style={{ width: 256, height: 256, borderRadius: 128 }}
                   />
@@ -356,6 +439,7 @@ const EditProfileScreen = () => {
               <View className="flex-row justify-between">
                 {[...Array(4)].map((_, index) => {
                   const secondaryPhotoUri = secondaryImages[index];
+                  const signedUrl = secondaryImagesSignedUrls[index];
                   return (
                     <TouchableOpacity
                       key={index}
@@ -385,9 +469,9 @@ const EditProfileScreen = () => {
                         shadowRadius: 2,
                       }}
                     >
-                      {secondaryPhotoUri ? (
+                      {signedUrl ? (
                         <Image
-                          source={{ uri: secondaryPhotoUri }}
+                          source={{ uri: signedUrl }}
                           className="w-full h-full rounded-full"
                           style={{ width: 64, height: 64, borderRadius: 32 }}
                         />

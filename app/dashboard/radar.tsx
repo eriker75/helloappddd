@@ -62,7 +62,7 @@ const RadarScreen = () => {
   // Compose a user object compatible with the rest of the code
   const user = {
     id: userId,
-    avatar,
+    avatar: avatar,
     latitude: latitude ? latitude : undefined,
     longitude: longitude ? longitude : undefined,
   };

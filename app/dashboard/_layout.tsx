@@ -1,11 +1,10 @@
 import { Text } from "@/components/ui";
+import { useUpdateMyUserCurrentLocation } from "@/src/presentation/services/UserProfileService";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Tabs, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-//import { useUpdateUserLocation } from "@/src/hooks/useUpdateUserLocation";
 
 export default function DashboardLayout() {
   const colorScheme = useColorScheme();
@@ -13,7 +12,7 @@ export default function DashboardLayout() {
   const insets = useSafeAreaInsets();
   const [isRadarActive, setIsRadarActive] = useState(false);
 
-  //const updateUserLocation = useUpdateUserLocation();
+  const { updateLocation } = useUpdateMyUserCurrentLocation();
 
   useEffect(() => {
     const currentSegment = segments[segments.length - 1];
@@ -25,11 +24,11 @@ export default function DashboardLayout() {
     console.log("[DashboardLayout] isRadarActive changed:", isRadarActive);
     if (isRadarActive) {
       console.log("[DashboardLayout] Calling updateUserLocation()");
-      //updateUserLocation();
+      updateLocation();
     }
     // Only run when radar becomes active
     /// eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRadarActive]);
+  }, [isRadarActive, updateLocation]);
 
   const radarTabBarStyle = {
     backgroundColor: "#5BC6EA", // Fondo azul claro

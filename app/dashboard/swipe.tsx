@@ -1,6 +1,7 @@
 import { Avatar, AvatarImage, Text } from "@/components/ui";
 import { useLoadSwipeableProfiles, useSwipeProfile } from "@/src/presentation/services/UserProfileService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
+import { useCurrentUserProfileStore } from "@/src/presentation/stores/current-user-profile.store";
 import { useNearbySwipeableProfilesStore } from "@/src/presentation/stores/nearby-swipeable-profiles.store";
 import { truncateString } from "@/src/utils/stringHelpers";
 import { getSignedUrlForKey } from "@/src/utils/supabaseS3Storage";
@@ -136,6 +137,7 @@ const SwipeScreen = () => {
   const { swipe, isPending: isPendingSwipe, isError: isErrorSwiping } = useSwipeProfile();
   const nearbySwipeableProfiles = useNearbySwipeableProfilesStore((s) => s.nearbySwipeableProfiles);
   const canSwipe = useNearbySwipeableProfilesStore((s) => s.canSwipe());
+  const setProfile = useCurrentUserProfileStore((s) => s.setProfile);
   const [photoIndex, setPhotoIndex] = useState(0);
   const currentProfile = nearbySwipeableProfiles[0];
 
@@ -156,7 +158,7 @@ const SwipeScreen = () => {
     ].filter(Boolean);
     console.log(`[${profile.alias}] Raw image URLs:`, urls);
     return urls;
-  }, [currentProfile?.userId, currentProfile?.avatar, currentProfile?.secondaryImages]);
+  }, [currentProfile]);
 
   // Function to check if a signed URL is expired
   const isSignedUrlExpired = (url: string): boolean => {
@@ -340,7 +342,7 @@ const SwipeScreen = () => {
         <View style={{ width: 38, height: 38 }} />
         <Text className="text-white text-[28px] font-semibold text-center flex-1 mx-[10px]">Hola</Text>
         <Pressable
-          onPress={() => router.push("/dashboard/profile/index")}
+          onPress={() => router.push("/dashboard/profile")}
           className="w-[38px] h-[38px] rounded-full overflow-hidden border-2 border-white items-center justify-center"
         >
           <Avatar size="sm" className="w-full h-full">
@@ -657,7 +659,10 @@ const SwipeScreen = () => {
           {currentProfile && (
             <Pressable
               className="items-center justify-center bg-transparent px-2 py-0.5 min-w-[80px]"
-              onPress={() => router.push(`/dashboard/profile/${currentProfile.userId}`)}
+              onPress={() => {
+                setProfile(currentProfile);
+                router.push(`/dashboard/profile/${currentProfile.userId}`)
+              }}
             >
               <MaterialIcons name="keyboard-arrow-up" size={28} color="#fff" />
               <Text

@@ -47,3 +47,23 @@ export const manualPermissionRequest = async () => {
     ]
   );
 };
+
+/**
+ * Gets the current device location (latitude, longitude).
+ * Requests permission if needed.
+ * Throws an error if permission is denied or location cannot be obtained.
+ */
+export const getCurrentLocation = async (): Promise<{ latitude: number; longitude: number }> => {
+  const permissionStatus = await requestLocationPermission();
+  if (permissionStatus !== LocationPermissionStatuses.GRANTED) {
+    throw new Error("Location permission not granted");
+  }
+  const location = await Location.getCurrentPositionAsync({});
+  if (!location?.coords) {
+    throw new Error("Unable to obtain location");
+  }
+  return {
+    latitude: location.coords.latitude,
+    longitude: location.coords.longitude,
+  };
+};
