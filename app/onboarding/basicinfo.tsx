@@ -40,7 +40,6 @@ const BasicInfoScreen = () => {
   const {
     control,
     handleSubmit,
-    setValue,
     watch,
     formState: { errors, isValid }
   } = useForm<Step2Data>({
