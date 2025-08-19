@@ -1,19 +1,11 @@
 import gpsAnimation from "@/assets/animations/gps-signal.json";
 import { Spinner } from "@/components/ui";
-import { useListNearbyMatchesService } from "@/src/presentation/services/UserProfileService";
+import { useListNearbyMatchProfileService } from "@/src/presentation/services/UserProfileService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import { Redirect, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useMemo, useState } from "react";
-import {
-  Dimensions,
-  Image,
-  PanResponder,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Dimensions, Image, PanResponder, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 /**
@@ -64,17 +56,15 @@ const RadarScreen = () => {
   const avatar = useAuthUserProfileStore((store) => store.avatar);
   const latitude = useAuthUserProfileStore((store) => store.latitude);
   const longitude = useAuthUserProfileStore((store) => store.longitude);
-  const isAuthenticated = useAuthUserProfileStore(
-    (store) => store.isAuthenticated
-  );
+  const isAuthenticated = useAuthUserProfileStore((store) => store.isAuthenticated);
   const isLoadingAuth = useAuthUserProfileStore((store) => store.isLoading);
 
   // Compose a user object compatible with the rest of the code
   const user = {
     id: userId,
     avatar,
-    latitude: latitude ? parseFloat(latitude) : undefined,
-    longitude: longitude ? parseFloat(longitude) : undefined,
+    latitude: latitude ? latitude : undefined,
+    longitude: longitude ? longitude : undefined,
   };
 
   console.log(JSON.stringify(user, null, 2));
@@ -89,12 +79,7 @@ const RadarScreen = () => {
   const maxRadius = Math.min(width, height) * 0.45;
 
   // Always call the hook, but only enable it when user?.id is available
-  const {
-    data: matches = [],
-    isLoading,
-    isError,
-    error,
-  } = useListNearbyMatchesService(user?.id || "", MAX_DISTANCE_KM);
+  const { data: matches = [], isLoading, isError, error } = useListNearbyMatchProfileService(MAX_DISTANCE_KM);
 
   if (isError) {
     console.error("[RADAR] React Query error object:", error);
@@ -102,22 +87,14 @@ const RadarScreen = () => {
 
   // Map UserProfileEntity[] to NearbyUser[]
   const nearbyUsers: NearbyUser[] = (matches || [])
-    .filter(
-      (m: any) =>
-        m.userId &&
-        m.latitude !== null &&
-        m.longitude !== null &&
-        (m.avatar || m.avatar_url)
-    )
+    .filter((m: any) => m.userId && m.latitude !== null && m.longitude !== null && (m.avatar || m.avatar_url))
     .map((m: any) => ({
       ...m,
       user_id: m.userId || m.user_id,
       username: m.alias || m.username || "Usuario",
       avatar_url: m.avatar || m.avatar_url || "",
-      latitude:
-        typeof m.latitude === "string" ? parseFloat(m.latitude) : m.latitude,
-      longitude:
-        typeof m.longitude === "string" ? parseFloat(m.longitude) : m.longitude,
+      latitude: typeof m.latitude === "string" ? parseFloat(m.latitude) : m.latitude,
+      longitude: typeof m.longitude === "string" ? parseFloat(m.longitude) : m.longitude,
       distance_km: m.distance_km ?? 0,
     }));
 
@@ -130,9 +107,7 @@ const RadarScreen = () => {
         onMoveShouldSetPanResponder: () => true,
         onPanResponderMove: (_, gestureState) => {
           if (gestureState.numberActiveTouches === 2) {
-            setScale((prev) =>
-              Math.max(0.5, Math.min(2, prev * (1 + gestureState.dy / 200)))
-            );
+            setScale((prev) => Math.max(0.5, Math.min(2, prev * (1 + gestureState.dy / 200))));
           }
         },
       }),
@@ -199,18 +174,12 @@ const RadarScreen = () => {
         <View style={styles.textContainer}>
           <Text style={styles.greeting}>Hola</Text>
           <Text style={styles.question}>¿A quién conocemos hoy?</Text>
-          <Text style={styles.nearbyCount}>
-            Hay {nearbyUsers.length} personas cerca.
-          </Text>
+          <Text style={styles.nearbyCount}>Hay {nearbyUsers.length} personas cerca.</Text>
         </View>
       </View>
 
       {/* Área del radar */}
-      <View
-        style={styles.radarArea}
-        {...panResponder.panHandlers}
-        pointerEvents="box-none"
-      >
+      <View style={styles.radarArea} {...panResponder.panHandlers} pointerEvents="box-none">
         {/* Animación GPS - IMPORTANTE: pointerEvents="none" */}
         <LottieView
           source={gpsAnimation}
@@ -284,13 +253,7 @@ const RadarScreen = () => {
         />
 
         {/* Usuario central */}
-        <View
-          pointerEvents="none"
-          style={[
-            styles.centerAvatarContainer,
-            { left: center.x - 25, top: center.y - 25 },
-          ]}
-        >
+        <View pointerEvents="none" style={[styles.centerAvatarContainer, { left: center.x - 25, top: center.y - 25 }]}>
           <Image
             source={{
               uri: user?.avatar || "https://via.placeholder.com/50",
@@ -302,20 +265,13 @@ const RadarScreen = () => {
 
         {/* Usuarios cercanos - ÁREA TÁCTIL PRINCIPAL */}
         {nearbyUsers.map((u: any) => {
-          if (
-            !u.latitude ||
-            !u.longitude ||
-            !u.avatar_url ||
-            typeof u.avatar_url !== "string"
-          )
-            return null;
+          if (!u.latitude || !u.longitude || !u.avatar_url || typeof u.avatar_url !== "string") return null;
 
           const deltaLat = u.latitude - user.latitude!;
           const deltaLng = u.longitude - user.longitude!;
 
           const kmPerDegreeLat = 111;
-          const kmPerDegreeLng =
-            111 * Math.cos((user.latitude! * Math.PI) / 180);
+          const kmPerDegreeLng = 111 * Math.cos((user.latitude! * Math.PI) / 180);
 
           const dx = deltaLng * kmPerDegreeLng;
           const dy = deltaLat * kmPerDegreeLat;
@@ -367,11 +323,7 @@ const RadarScreen = () => {
                 ]}
                 activeOpacity={0.7}
               >
-                <Image
-                  source={{ uri: u.avatar_url }}
-                  style={styles.avatar}
-                  resizeMode="cover"
-                />
+                <Image source={{ uri: u.avatar_url }} style={styles.avatar} resizeMode="cover" />
 
                 {isSelected && <View style={styles.glowEffect} />}
               </TouchableOpacity>
@@ -396,20 +348,10 @@ const RadarScreen = () => {
                     alignItems: "center",
                   }}
                 >
-                  <Text
-                    style={{ fontSize: 12, color: "#333", fontWeight: "bold" }}
-                  >
-                    {u.username || "Usuario"}
-                  </Text>
-                  <Text
-                    style={{ fontSize: 10, color: "#666", marginBottom: 6 }}
-                  >
-                    {u.distance_km.toFixed(1)} km
-                  </Text>
+                  <Text style={{ fontSize: 12, color: "#333", fontWeight: "bold" }}>{u.username || "Usuario"}</Text>
+                  <Text style={{ fontSize: 10, color: "#666", marginBottom: 6 }}>{u.distance_km.toFixed(1)} km</Text>
                   <TouchableOpacity
-                    onPress={() =>
-                      router.replace(`/dashboard/profile/${u.user_id}` as any)
-                    }
+                    onPress={() => router.replace(`/dashboard/profile/${u.user_id}` as any)}
                     style={{
                       backgroundColor: "#007AFF",
                       paddingHorizontal: 10,
@@ -417,9 +359,7 @@ const RadarScreen = () => {
                       borderRadius: 4,
                     }}
                   >
-                    <Text style={{ color: "#fff", fontSize: 12 }}>
-                      Ver perfil
-                    </Text>
+                    <Text style={{ color: "#fff", fontSize: 12 }}>Ver perfil</Text>
                   </TouchableOpacity>
                 </View>
               )}

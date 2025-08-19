@@ -89,7 +89,7 @@ export function useSwipeProfile() {
   };
 }
 
-export function useLoadNearbyMatchProfiles(maxDistance: number) {
+export function useListNearbyMatchProfileService(maxDistance: number) {
   return useListNearbyMatches(maxDistance);
 }
 
