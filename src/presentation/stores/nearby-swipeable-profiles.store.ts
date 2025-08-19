@@ -35,7 +35,7 @@ export interface NearbySwipeableProfile extends ExtendedUserProfile {
 
 export interface NearbySwipeableProfilesState {
   nearbySwipeableProfiles: NearbySwipeableProfile[];
-  shiwftedNearbySwipeableProfile: NearbySwipeableProfile | null;
+  shiftedNearbySwipeableProfile: NearbySwipeableProfile | null;
   hasMore: boolean;
   todaySwipedCounter: number;
   firstSwipeTimestamp: number | null; // Unix timestamp (ms) of first swipe in current 24h window
@@ -48,6 +48,7 @@ export interface NearbySwipeableProfilesAction {
   loadInitialProfiles: (profiles: NearbySwipeableProfile[]) => void;
   swipeProfile: (newProfile: NearbySwipeableProfile | null) => void;
   restoreSwipeableProfile: () => void;
+
 }
 
 export type NearbySwipeableProfilesStore = NearbySwipeableProfilesState &
@@ -55,7 +56,7 @@ export type NearbySwipeableProfilesStore = NearbySwipeableProfilesState &
 
 const initialState: NearbySwipeableProfilesState = {
   nearbySwipeableProfiles: [],
-  shiwftedNearbySwipeableProfile: null,
+  shiftedNearbySwipeableProfile: null,
   hasMore: false,
   todaySwipedCounter: 0,
   firstSwipeTimestamp: null,
@@ -119,8 +120,8 @@ const nearbySwipeableProfilesStoreCreator: StateCreator<
     swipeProfile: (newProfile: NearbySwipeableProfile | null) => {
       set((state) => {
         // Remove the first profile (the one swiped)
-        const shiftedProfile = state.nearbySwipeableProfiles.shift();
-        state.shiwftedNearbySwipeableProfile = shiftedProfile;
+        const shiftedProfile = state.nearbySwipeableProfiles.shift() ?? null;
+        state.shiftedNearbySwipeableProfile = shiftedProfile;
         // Add new profile if available
         if (newProfile) {
           state.nearbySwipeableProfiles.push(newProfile);
@@ -136,9 +137,9 @@ const nearbySwipeableProfilesStoreCreator: StateCreator<
 
     restoreSwipeableProfile: () => {
       set((state) => {
-        if (state.shiwftedNearbySwipeableProfile) {
-          state.nearbySwipeableProfiles.unshift(state.shiwftedNearbySwipeableProfile);
-          state.shiwftedNearbySwipeableProfile = null;
+        if (state.shiftedNearbySwipeableProfile) {
+          state.nearbySwipeableProfiles.unshift(state.shiftedNearbySwipeableProfile);
+          state.shiftedNearbySwipeableProfile = null;
         }
       });
     }

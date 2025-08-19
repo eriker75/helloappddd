@@ -42,27 +42,38 @@ export function useGetCurrentUserProfileByUserId(userId: string) {
 export function useLoadSwipeableProfiles(maxDistance: number) {
   const nearbySwipeableProfilesInStore = useNearbySwipeableProfilesStore((s) => s.nearbySwipeableProfiles);
   const loadInitialNearbySwipeableProfiles = useNearbySwipeableProfilesStore((s) => s.loadInitialProfiles);
-  const swipeProfile = useNearbySwipeableProfilesStore((s) => s.swipeProfile);
+  // Removed: const swipeProfile = useNearbySwipeableProfilesStore((s) => s.swipeProfile);
   const { data: swipeableProfilesRequested, ...rest } = useListNearbySwipeableProfiles(
     maxDistance,
     nearbySwipeableProfilesInStore.length === 0 ? 5 : 1
   );
-  if (!rest.isLoading && !rest.isFetching && swipeableProfilesRequested) {
-    if (nearbySwipeableProfilesInStore.length === 0) {
-      loadInitialNearbySwipeableProfiles(swipeableProfilesRequested);
+
+  // Move all state updates into an effect to avoid React render errors
+  useEffect(() => {
+    if (!rest.isLoading && !rest.isFetching && swipeableProfilesRequested) {
+      if (nearbySwipeableProfilesInStore.length === 0) {
+        loadInitialNearbySwipeableProfiles(swipeableProfilesRequested);
+      }
+      // Removed: if (nearbySwipeableProfilesInStore.length > 0 && nearbySwipeableProfilesInStore.length < 5) { swipeProfile(swipeableProfilesRequested[0] ?? null); }
+      // If you want to append new profiles when running low, implement an appendProfiles method in the store and call it here.
     }
-    if (nearbySwipeableProfilesInStore.length > 0 && nearbySwipeableProfilesInStore.length < 5) {
-      swipeProfile(swipeableProfilesRequested[0] ?? null);
-    }
-  }
+    // Only run when relevant data changes
+  }, [
+    rest.isLoading,
+    rest.isFetching,
+    swipeableProfilesRequested,
+    nearbySwipeableProfilesInStore.length,
+    loadInitialNearbySwipeableProfiles,
+    // Removed: swipeProfile,
+  ]);
 }
 
 export function useSwipeProfile() {
   const swipeProfile = useNearbySwipeableProfilesStore((s) => s.swipeProfile);
   const restoreSwipeableProfile = useNearbySwipeableProfilesStore((s) => s.restoreSwipeableProfile);
-  const { mutate: swipeUserProfileMutation } = useCreateSwipe();
+  const mutation = useCreateSwipe();
 
-  return ({
+  const swipe = ({
     targetUserId,
     liked,
     newProfile,
@@ -71,7 +82,7 @@ export function useSwipeProfile() {
     liked: boolean;
     newProfile?: ExtendedUserProfile;
   }) => {
-    swipeUserProfileMutation(
+    mutation.mutate(
       { targetUserId, liked },
       {
         onSuccess: () => {
@@ -87,6 +98,8 @@ export function useSwipeProfile() {
       }
     );
   };
+
+  return { swipe, ...mutation };
 }
 
 export function useListNearbyMatchProfileService(maxDistance: number) {
