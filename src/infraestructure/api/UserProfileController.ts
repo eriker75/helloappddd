@@ -5,7 +5,7 @@ import {
   UpdateUserProfileRequest,
   UserProfileResponse,
 } from "@/src/domain/models/user-profile.models";
-import { getAuthenticatedUser } from "@/src/utils/getAuthenticatedUser";
+import { getAuthenticatedUser, getEnrichedAuthenticatedUser } from "@/src/utils/getAuthenticatedUser";
 import { supabase } from "@/src/utils/supabase";
 
 export class UserProfileController {
@@ -150,19 +150,225 @@ export class UserProfileController {
   }
 
   async listNearbyProfiles(maxDistance: number): Promise<ExtendedUserProfileResponse[]> {
-    throw new Error("Method not implemented.");
+    await getEnrichedAuthenticatedUser();
+
+    // 1. Call the RPC to get basic info and user_ids
+    const { data: rpcData, error } = await supabase.rpc("nearby_profiles", {
+      max_distance: maxDistance,
+    });
+
+    if (error) {
+      throw new Error("Error fetching nearby profiles: " + error.message);
+    }
+
+    const userIds = (rpcData ?? []).map((raw: any) => raw.user_id);
+
+    if (!userIds.length) return [];
+
+    // 2. Fetch full profiles and preferences for those user_ids
+    const { data: profiles, error: profilesError } = await supabase.from("profiles").select("*").in("user_id", userIds);
+
+    if (profilesError) {
+      throw new Error("Error fetching profiles: " + profilesError.message);
+    }
+
+    const { data: preferences, error: prefsError } = await supabase
+      .from("preferences")
+      .select("*")
+      .in("user_id", userIds);
+
+    if (prefsError) {
+      throw new Error("Error fetching preferences: " + prefsError.message);
+    }
+
+    // 3. Merge all data to construct ExtendedUserProfileResponse[]
+    const profilesMap = new Map(profiles.map((p: any) => [p.user_id, p]));
+    const prefsMap = new Map(preferences.map((p: any) => [p.user_id, p]));
+
+    const results: ExtendedUserProfileResponse[] = (rpcData ?? []).map((raw: any) => {
+      const profile = profilesMap.get(raw.user_id) || {};
+      const prefs = prefsMap.get(raw.user_id) || null;
+      return {
+        id: profile.id ?? "",
+        user_id: raw.user_id,
+        email: profile.email ?? "",
+        name: profile.name ?? null,
+        alias: profile.alias ?? raw.username ?? "",
+        biography: profile.biography ?? raw.biography ?? null,
+        birth_date: profile.birth_date ?? null,
+        gender: profile.gender ?? raw.gender,
+        avatar: profile.avatar ?? raw.avatar_url ?? "",
+        address: profile.address ?? null,
+        last_online: profile.last_online ?? null,
+        is_onboarded: profile.is_onboarded ?? null,
+        is_verified: profile.is_verified ?? null,
+        latitude: profile.latitude ?? raw.latitude ?? null,
+        longitude: profile.longitude ?? raw.longitude ?? null,
+        is_online: profile.is_online ?? null,
+        is_active: profile.is_active ?? null,
+        location: profile.location ?? null,
+        secondary_images: profile.secondary_images ?? null,
+        preferences: prefs,
+        distance_in_km: raw.distance_km?.toString() ?? "0",
+      };
+    });
+
+    return results;
   }
 
   async listNearbySwipeableProfiles(maxDistance: number, limit: number = 5): Promise<ExtendedUserProfileResponse[]> {
-    throw new Error("Method not implemented.");
+    // Ensure user is authenticated and enriched (for location, etc.)
+    await getEnrichedAuthenticatedUser();
+
+    // 1. Call the RPC to get basic info and user_ids
+    const { data: rpcData, error } = await supabase.rpc("swipeable_profiles", {
+      max_distance: maxDistance,
+      limit_count: limit,
+    });
+
+    if (error) {
+      throw new Error("Error fetching swipeable profiles: " + error.message);
+    }
+
+    const userIds = (rpcData ?? []).map((raw: any) => raw.user_id);
+
+    if (!userIds.length) return [];
+
+    // 2. Fetch full profiles and preferences for those user_ids
+    const { data: profiles, error: profilesError } = await supabase.from("profiles").select("*").in("user_id", userIds);
+
+    if (profilesError) {
+      throw new Error("Error fetching profiles: " + profilesError.message);
+    }
+
+    const { data: preferences, error: prefsError } = await supabase
+      .from("preferences")
+      .select("*")
+      .in("user_id", userIds);
+
+    if (prefsError) {
+      throw new Error("Error fetching preferences: " + prefsError.message);
+    }
+
+    // 3. Merge all data to construct ExtendedUserProfileResponse[]
+    const profilesMap = new Map(profiles.map((p: any) => [p.user_id, p]));
+    const prefsMap = new Map(preferences.map((p: any) => [p.user_id, p]));
+
+    const results: ExtendedUserProfileResponse[] = (rpcData ?? []).map((raw: any) => {
+      const profile = profilesMap.get(raw.user_id) || {};
+      const prefs = prefsMap.get(raw.user_id) || null;
+      return {
+        id: profile.id ?? "",
+        user_id: raw.user_id,
+        email: profile.email ?? "",
+        name: profile.name ?? null,
+        alias: profile.alias ?? raw.username ?? "",
+        biography: profile.biography ?? raw.biography ?? null,
+        birth_date: profile.birth_date ?? null,
+        gender: profile.gender ?? raw.gender,
+        avatar: profile.avatar ?? raw.avatar_url ?? "",
+        address: profile.address ?? null,
+        last_online: profile.last_online ?? null,
+        is_onboarded: profile.is_onboarded ?? null,
+        is_verified: profile.is_verified ?? null,
+        latitude: profile.latitude ?? raw.latitude ?? null,
+        longitude: profile.longitude ?? raw.longitude ?? null,
+        is_online: profile.is_online ?? null,
+        is_active: profile.is_active ?? null,
+        location: profile.location ?? null,
+        secondary_images: profile.secondary_images ?? null,
+        preferences: prefs,
+        distance_in_km: raw.distance_km?.toString() ?? "0",
+      };
+    });
+
+    return results;
   }
 
   async listNearbyMatches(maxDistance: number): Promise<ExtendedUserProfileResponse[]> {
-    throw new Error("Method not implemented.");
+    // Ensure user is authenticated and enriched (for location, etc.)
+    await getEnrichedAuthenticatedUser();
+
+    // 1. Call the RPC to get basic info and user_ids
+    const { data: rpcData, error } = await supabase.rpc("nearby_matches", {
+      max_distance: maxDistance,
+    });
+
+    if (error) {
+      throw new Error("Error fetching nearby matches: " + error.message);
+    }
+
+    const userIds = (rpcData ?? []).map((raw: any) => raw.user_id);
+
+    if (!userIds.length) return [];
+
+    // 2. Fetch full profiles and preferences for those user_ids
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("user_id", userIds);
+
+    if (profilesError) {
+      throw new Error("Error fetching profiles: " + profilesError.message);
+    }
+
+    const { data: preferences, error: prefsError } = await supabase
+      .from("preferences")
+      .select("*")
+      .in("user_id", userIds);
+
+    if (prefsError) {
+      throw new Error("Error fetching preferences: " + prefsError.message);
+    }
+
+    // 3. Merge all data to construct ExtendedUserProfileResponse[]
+    const profilesMap = new Map(profiles.map((p: any) => [p.user_id, p]));
+    const prefsMap = new Map(preferences.map((p: any) => [p.user_id, p]));
+
+    const results: ExtendedUserProfileResponse[] = (rpcData ?? []).map((raw: any) => {
+      const profile = profilesMap.get(raw.user_id) || {};
+      const prefs = prefsMap.get(raw.user_id) || null;
+      return {
+        id: profile.id ?? "",
+        user_id: raw.user_id,
+        email: profile.email ?? "",
+        name: profile.name ?? null,
+        alias: profile.alias ?? raw.username ?? "",
+        biography: profile.biography ?? raw.biography ?? null,
+        birth_date: profile.birth_date ?? null,
+        gender: profile.gender ?? raw.gender,
+        avatar: profile.avatar ?? raw.avatar_url ?? "",
+        address: profile.address ?? null,
+        last_online: profile.last_online ?? null,
+        is_onboarded: profile.is_onboarded ?? null,
+        is_verified: profile.is_verified ?? null,
+        latitude: profile.latitude ?? raw.latitude ?? null,
+        longitude: profile.longitude ?? raw.longitude ?? null,
+        is_online: profile.is_online ?? null,
+        is_active: profile.is_active ?? null,
+        location: profile.location ?? null,
+        secondary_images: profile.secondary_images ?? null,
+        preferences: prefs,
+        distance_in_km: raw.distance_km?.toString() ?? "0",
+      };
+    });
+
+    return results;
   }
 
   async updateMyLocation(latitude: number, longitude: number): Promise<boolean> {
-    throw new Error("Method not implemented.");
+    await getAuthenticatedUser();
+
+    const { data, error } = await supabase.rpc("update_my_location", {
+      new_latitude: latitude,
+      new_longitude: longitude,
+    });
+
+    if (error) {
+      throw new Error("Error updating location: " + error.message);
+    }
+
+    return data === true || data === 1;
   }
 
   async onboardUser(onboardingData: OnboardUserProfileRequest): Promise<boolean> {
