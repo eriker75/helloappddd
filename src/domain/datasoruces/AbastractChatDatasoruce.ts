@@ -4,7 +4,7 @@ import { Message, PaginatedMessages } from "../entities/Message";
 export abstract class AbastractChatDatasoruce {
   // CRUD
   abstract findMyChatById(id: string): Promise<Chat | null>;
-  abstract findAllMyChats(page: number, perPage: number): Promise<PaginatedChats>;
+  abstract findMyChats(page: number, perPage: number): Promise<PaginatedChats>;
   abstract createChat(chat: Partial<Chat>): Promise<boolean>;
   abstract updateChat(chat: Partial<Chat>): Promise<boolean>;
   abstract deleteChat(id: string): Promise<boolean>;

@@ -11,10 +11,12 @@ export interface ChatMessagesState {
   chatIsActive: boolean;
   messages: Record<string, Message>;
   orderedMessageIds: string[];
+  unreadMessageIds: string[];
   page: number;
   perPage: number;
   total: number;
   hasMore: boolean;
+  lastMarkedAsReadMessageIds: string[];
 }
 
 export interface ChatMessagesActions {
@@ -37,6 +39,8 @@ export interface ChatMessagesActions {
   setLoadingMessages: (loading: boolean) => void;
   setPagination: (pagination: { page: number; perPage: number; total: number; hasMore: boolean }) => void;
   getOrderedMessages: () => Message[];
+  markAllAsRead: () => void;
+  revertMarkAllAsRead: () => void;
 }
 
 export type ChatMessagesStore = ChatMessagesState & ChatMessagesActions;
@@ -48,10 +52,12 @@ const initialState: ChatMessagesState = {
   chatIsActive: false,
   messages: {},
   orderedMessageIds: [],
+  unreadMessageIds: [],
   page: 1,
   perPage: 20,
   total: 0,
   hasMore: false,
+  lastMarkedAsReadMessageIds: [],
 };
 
 function sortMessageIdsDesc(messages: Record<string, Message>): string[] {
@@ -60,7 +66,7 @@ function sortMessageIdsDesc(messages: Record<string, Message>): string[] {
     .map((m) => m.messageId);
 }
 
-const chatMessagesStoreCreator: StateCreator<
+const currentChatMessagesStoreCreator: StateCreator<
   ChatMessagesStore,
   [["zustand/immer", never]],
   [["zustand/persist", unknown]]
@@ -76,7 +82,9 @@ const chatMessagesStoreCreator: StateCreator<
       state.orderedMessageIds = [];
       if (chat.messages) {
         state.messages = Object.fromEntries(chat.messages.map((m) => [m.messageId, m]));
-        state.orderedMessageIds = sortMessageIdsDesc(state.messages);
+        const messageIds = sortMessageIdsDesc(state.messages);
+        state.orderedMessageIds = messageIds;
+        state.unreadMessageIds = messageIds;
       }
       state.page = typeof chat.page === "number" ? chat.page : 1;
       state.perPage = typeof chat.perPage === "number" ? chat.perPage : 20;
@@ -94,6 +102,7 @@ const chatMessagesStoreCreator: StateCreator<
       state.chatIsActive = false;
       state.messages = {};
       state.orderedMessageIds = [];
+      state.unreadMessageIds = [];
       state.loadingMessages = false;
       state.page = 1;
       state.perPage = 20;
@@ -103,7 +112,9 @@ const chatMessagesStoreCreator: StateCreator<
   setInitialMessages: (messages, page = 1, perPage = 20, total = 0, hasMore = false) =>
     set((state) => {
       state.messages = Object.fromEntries(messages.map((m) => [m.messageId, m]));
-      state.orderedMessageIds = sortMessageIdsDesc(state.messages);
+      const messageIds = sortMessageIdsDesc(state.messages);
+      state.orderedMessageIds = messageIds;
+      state.unreadMessageIds = messageIds;
       state.page = typeof page === "number" ? page : 1;
       state.perPage = typeof perPage === "number" ? perPage : 20;
       state.total = typeof total === "number" ? total : 0;
@@ -113,6 +124,9 @@ const chatMessagesStoreCreator: StateCreator<
     set((state) => {
       for (const m of messages) {
         state.messages[m.messageId] = m;
+        if (!state.unreadMessageIds.includes(m.messageId)) {
+          state.unreadMessageIds.push(m.messageId);
+        }
       }
       state.orderedMessageIds = sortMessageIdsDesc(state.messages);
       if (typeof page === "number") state.page = page;
@@ -123,6 +137,9 @@ const chatMessagesStoreCreator: StateCreator<
       state.messages[message.messageId] = message;
       // Insertar al principio si es el más reciente
       state.orderedMessageIds = sortMessageIdsDesc(state.messages);
+      if (!state.unreadMessageIds.includes(message.messageId)) {
+        state.unreadMessageIds.push(message.messageId);
+      }
     }),
   updateMessage: (messageId, update) =>
     set((state) => {
@@ -139,6 +156,7 @@ const chatMessagesStoreCreator: StateCreator<
     set((state) => {
       delete state.messages[messageId];
       state.orderedMessageIds = state.orderedMessageIds.filter((id: string) => id !== messageId);
+      state.unreadMessageIds = state.unreadMessageIds.filter((id: string) => id !== messageId);
     }),
   setLoadingMessages: (loading) =>
     set((state) => {
@@ -155,11 +173,36 @@ const chatMessagesStoreCreator: StateCreator<
     const state = get();
     return state.orderedMessageIds.map((id) => state.messages[id]);
   },
+  markAllAsRead: () =>
+    set((state) => {
+      // Store the IDs that are being marked as read for potential rollback
+      state.lastMarkedAsReadMessageIds = [...state.unreadMessageIds];
+      for (const id of state.unreadMessageIds) {
+        if (state.messages[id]) {
+          state.messages[id].readed = true;
+        }
+      }
+      state.unreadMessageIds = [];
+    }),
+
+  revertMarkAllAsRead: () =>
+    set((state) => {
+      for (const id of state.lastMarkedAsReadMessageIds) {
+        if (state.messages[id]) {
+          state.messages[id].readed = false;
+        }
+        // Only add back to unreadMessageIds if not already present
+        if (!state.unreadMessageIds.includes(id)) {
+          state.unreadMessageIds.push(id);
+        }
+      }
+      state.lastMarkedAsReadMessageIds = [];
+    }),
 });
 
-export const useChatMessagesStore = create<ChatMessagesStore>()(
-  persist(immer(chatMessagesStoreCreator), {
-    name: "chat-messages-store",
+export const useCurrentChatMessagesStore = create<ChatMessagesStore>()(
+  persist(immer(currentChatMessagesStoreCreator), {
+    name: "current-chat-messages-store",
     storage: zustandAsyncStorage,
     partialize: (state) => ({ ...state }),
   })

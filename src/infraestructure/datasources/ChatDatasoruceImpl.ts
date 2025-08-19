@@ -22,8 +22,8 @@ export class ChatDatasourceImpl implements AbastractChatDatasoruce {
     return mapSingleChatResponseToChatEntity(singleChatResponse);
   }
 
-  async findAllMyChats(page: number, perPage: number): Promise<PaginatedChats> {
-    const allMyChats = await this.controller.findAllMyChats(page, perPage);
+  async findMyChats(page: number, perPage: number): Promise<PaginatedChats> {
+    const allMyChats = await this.controller.findMyChats(page, perPage);
     const chats = allMyChats.chats.map((chat) => mapSingleChatResponseToChatEntity(chat));
     return {
       chats,

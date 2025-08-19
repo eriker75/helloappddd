@@ -33,6 +33,11 @@ export interface ChatListAction {
     }
   ) => void;
   getSortedChats: () => Chat[]; // Para obtener los chats ordenados
+
+  /**
+   * Set the unread count for a specific chat.
+   */
+  setChatUnreadCount: (chatId: string, count: number) => void;
 }
 
 export type ChatListStore = ChatListState & ChatListAction;
@@ -119,6 +124,16 @@ const chatListStoreCreator: StateCreator<ChatListStore, [["zustand/immer", never
     const chatsArray = Object.values(get().chats);
     return sortChatsDesc(chatsArray);
   },
+  setChatUnreadCount: (chatId, count) =>
+    set((state) => {
+      const chat = state.chats[chatId];
+      if (chat) {
+        state.chats[chatId] = {
+          ...chat,
+          unreadCount: count,
+        };
+      }
+    }),
 });
 
 export const useChatListStore = create<ChatListStore>()(

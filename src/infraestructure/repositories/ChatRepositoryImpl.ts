@@ -1,19 +1,24 @@
 import { Chat, PaginatedChats } from "@/src/domain/entities/Chat";
 import { Message, PaginatedMessages } from "@/src/domain/entities/Message";
-import { UseMutationResult, UseQueryResult, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  QueryClient,
+  UseMutationResult,
+  UseQueryResult,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { ChatDatasourceImpl } from "../datasources/ChatDatasoruceImpl";
 
-// Singleton datasource instance for hooks
-const datasource = new ChatDatasourceImpl();
+/**
+ * Async function to fetch paginated chats for the current user using react-query.
+ * @param page The page number (starting from 1)
+ * @param perPage The number of chats per page
+ * @returns Promise with paginated chats and metadata (from cache or network)
+ */
 
-// Queries
-export function useFindMyChatById(id: string): UseQueryResult<Chat | null> {
-  return useQuery({
-    queryKey: ["chat", "findMyChatById", id],
-    queryFn: () => datasource.findMyChatById(id),
-    enabled: !!id,
-  });
-}
+export const queryClient = new QueryClient();
+const datasource = new ChatDatasourceImpl();
 
 /**
  * Returns paginated chats for the current user.
@@ -21,11 +26,22 @@ export function useFindMyChatById(id: string): UseQueryResult<Chat | null> {
  * @param perPage The number of chats per page
  * @returns UseQueryResult with paginated chats and metadata
  */
-export function useFindAllMyChats(page: number, perPage: number): UseQueryResult<PaginatedChats> {
+export function useFindMyChats(page: number, perPage: number): UseQueryResult<PaginatedChats> {
   return useQuery({
-    queryKey: ["chat", "findAllMyChats", page, perPage],
-    queryFn: () => datasource.findAllMyChats(page, perPage),
+    queryKey: ["chat", "findMyChats", page, perPage],
+    queryFn: () => datasource.findMyChats(page, perPage),
     enabled: typeof page === "number" && typeof perPage === "number" && page > 0 && perPage > 0,
+  });
+}
+
+export async function fetchMyChats(page: number, perPage: number): Promise<PaginatedChats> {
+  const queryKey = ["chat", "findMyChats", page, perPage];
+  // Usa el cache de react-query si existe, si no, hace fetch y lo cachea
+  const data = queryClient.getQueryData<PaginatedChats>(queryKey);
+  if (data) return data;
+  return await queryClient.fetchQuery<PaginatedChats>({
+    queryKey,
+    queryFn: () => datasource.findMyChats(page, perPage),
   });
 }
 

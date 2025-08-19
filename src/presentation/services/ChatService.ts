@@ -1,131 +1,122 @@
-import type { Chat } from "@/src/domain/entities/Chat";
-import type { Message } from "@/src/domain/entities/Message";
 import {
-  useCreateChat,
-  useFindAllMyChats,
-  useGetAllMyChatMessages,
-  useMarkAllMessagesFromChatAsRead,
-  useSendMessageToChat
+  fetchMyChats,
+  useFindMyChats,
+  useMarkAllMessagesFromChatAsRead as useRepoMarkAllMessagesFromChatAsRead,
 } from "@/src/infraestructure/repositories/ChatRepositoryImpl";
-import { chatListStore } from "@/src/presentation/stores/chat-list.store";
-import { currentChatStore } from "@/src/presentation/stores/chat-messages.store";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useChatListStore } from "../stores/chat-list.store";
 
 /**
- * Hook to fetch all chats and sync with chatListStore.
+ * Hook to mark all messages from a chat as read and sync with currentChatStore.
  */
-export function useFindAllMyChatsService(page: number = 1, perPage: number = 20) {
-  const query = useFindAllMyChats(page, perPage);
-  const setChats = chatListStore((s) => s.setChats);
+import { useCurrentChatMessagesStore } from "../stores/current-chat-messages.store";
+
+export function useGetChatsService(page: number = 1, perPage: number = 20) {
+  const { data: myFetchedChats, isLoading, isError } = useFindMyChats(page, perPage);
+  const setChats = useChatListStore((s) => s.setChats);
+  const total = useChatListStore((s) => s.total);
 
   useEffect(() => {
-    if (query.data) {
+    if (myFetchedChats && Array.isArray(myFetchedChats.chats) && total === 0) {
       setChats(
-        query.data.chats,
-        query.data.page,
-        query.data.perPage,
-        query.data.total,
-        query.data.hasMore
+        myFetchedChats.chats,
+        myFetchedChats.page,
+        myFetchedChats.perPage,
+        myFetchedChats.total,
+        myFetchedChats.hasMore
       );
     }
-  }, [query.data, setChats]);
+  }, [myFetchedChats, setChats, total]);
 
-  return query;
+  return {
+    chats: useChatListStore((s) => s.getSortedChats()),
+    isLoading,
+    isError,
+    total,
+  };
+}
+
+export function useGetMoreChatsService() {
+  const appendChats = useChatListStore((s) => s.appendChats);
+  const page = useChatListStore((s) => s.page);
+  const perPage = useChatListStore((s) => s.perPage);
+  const hasMore = useChatListStore((s) => s.hasMore);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadMoreChats = useCallback(async () => {
+    if (!hasMore) return;
+    setIsLoading(true);
+    setError(null);
+    let myFetchedChats;
+    try {
+      myFetchedChats = await fetchMyChats(page + 1, perPage);
+      if (myFetchedChats && Array.isArray(myFetchedChats.chats) && myFetchedChats.chats.length > 0) {
+        appendChats(
+          myFetchedChats.chats,
+          myFetchedChats.page,
+          myFetchedChats.perPage,
+          myFetchedChats.total,
+          myFetchedChats.hasMore
+        );
+      }
+    } catch (err: any) {
+      setError(err?.message || "An error occurred while loading more chats.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [appendChats, page, perPage, hasMore]);
+
+  return { loadMoreChats, hasMore, page, perPage, isLoading, error };
 }
 
 /**
  * Hook to create a chat and sync with chatListStore.
  */
-export function useCreateChatService() {
-  const addChat = chatListStore((s) => s.addChat);
-  const mutation = useCreateChat();
-
-  const createChat = (chat: Partial<Chat>) => {
-    mutation.mutate(chat as Chat, {
-      onSuccess: () => {
-        // Optionally, refetch chats or add to store if returned
-        // addChat(chat as Chat);
-      },
-    });
-  };
-
-  return {
-    ...mutation,
-    createChat,
-  };
-}
+export function useCreateChatService() {}
 
 /**
  * Hook to fetch all messages for a chat and sync with currentChatStore.
  */
-export function useGetAllMyChatMessagesService(chatId: string, page: number = 1, perPage: number = 20) {
-  const query = useGetAllMyChatMessages(chatId, page, perPage);
-  const setMessages = currentChatStore((s) => s.setMessages);
-  const setPagination = currentChatStore((s) => s.setPagination);
-
-  useEffect(() => {
-    if (query.data) {
-      setMessages(query.data.messages);
-      setPagination({
-        page: query.data.page,
-        perPage: query.data.perPage,
-        total: query.data.total,
-        hasMore: query.data.hasMore,
-      });
-    }
-  }, [query.data, setMessages, setPagination]);
-
-  return query;
-}
+export function useGetChatMessagesService(chatId: string, page: number = 1, perPage: number = 20) {}
 
 /**
  * Hook to send a message to a chat and sync with currentChatStore and chatListStore.
  */
-export function useSendMessageToChatService() {
-  const addMessage = currentChatStore((s) => s.addMessage);
-  const updateChatLastMessage = chatListStore((s) => s.updateChatLastMessage);
-  const mutation = useSendMessageToChat();
-
-  const sendMessage = (chatId: string, message: Message) => {
-    addMessage(message);
-    updateChatLastMessage(chatId, {
-      id: message.messageId,
-      content: message.content ?? "",
-      status: "sent",
-      isByMe: true,
-      createdAt: typeof message.createdAt === "string"
-        ? message.createdAt
-        : message.createdAt?.toISOString?.() ?? "",
-    });
-    mutation.mutate({ chatId, message }, {
-      // Optionally handle rollback on error
-    });
-  };
-
-  return {
-    ...mutation,
-    sendMessage,
-  };
-}
+export function useSendMessageToChatService() {}
 
 /**
  * Hook to mark all messages from a chat as read and sync with currentChatStore.
+ * Handles optimistic update and rollback on error.
  */
 export function useMarkAllMessagesFromChatAsReadService() {
-  const setMessages = currentChatStore((s) => s.setMessages);
-  const mutation = useMarkAllMessagesFromChatAsRead();
-
-  const markAllAsRead = (chatId: string, messages: Message[]) => {
-    // Optimistically mark all as read in store
-    setMessages(messages.map(m => ({ ...m, readed: true })));
+  const chatId = useCurrentChatMessagesStore((s) => s.chatId);
+  const markAllAsRead = useCurrentChatMessagesStore((s) => s.markAllAsRead);
+  const revertMarkAllAsRead = useCurrentChatMessagesStore((s) => s.revertMarkAllAsRead);
+  const setChatUnreadCount = useChatListStore((s) => s.setChatUnreadCount);
+  const chatUnreadCount = useChatListStore((s) => (chatId ? s.chats[chatId]?.unreadedCount ?? 0 : 0));
+  // Store previous unread count for rollback
+  const prevUnreadCountRef = useRef<number | undefined>(undefined);
+  // mutation request hook
+  const mutation = useRepoMarkAllMessagesFromChatAsRead();
+  // Optimistic update function
+  const markAll = useCallback(() => {
+    if (!chatId) return;
+    prevUnreadCountRef.current = chatUnreadCount;
+    markAllAsRead();
+    setChatUnreadCount(chatId, 0);
     mutation.mutate(chatId, {
-      // Optionally handle rollback on error
-
+      onError: () => {
+        revertMarkAllAsRead();
+        setChatUnreadCount(chatId, prevUnreadCountRef.current ?? 0);
+      },
     });
-  };
-
+  }, [chatId, chatUnreadCount, markAllAsRead, setChatUnreadCount, mutation, revertMarkAllAsRead]);
   return {
-    ...mutation,
-    markAllAsRead,
+    markAllMessagesAsRead: markAll,
+    isLoading: mutation.status === "pending",
+    isError: mutation.status === "error",
+    error: mutation.error,
+    isSuccess: mutation.status === "success",
   };
 }

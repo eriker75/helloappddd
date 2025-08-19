@@ -1,3 +1,11 @@
+## 2025-08-18 - Fix Unread Message Logic in Chat Store
+
+- Renamed `unreadedMessageIds` to `unreadMessageIds` for clarity and consistency.
+- Fixed logic to prevent duplicates and ensure IDs are removed when messages are deleted.
+- Added `markAllAsRead` method to clear all unread message IDs at once.
+- Removed stray code causing a TypeScript error in `addMessage`.
+- See [2025-08-18-fix-unread-message-logic.md](2025-08-18-fix-unread-message-logic.md) for full details and rationale.
+
 # Devlog
 
 ## 2025-08-17 - Mapper Fixes

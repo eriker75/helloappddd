@@ -12,7 +12,7 @@ export class ChatController {
     throw new Error("Method not implemented.");
   }
 
-  async findAllMyChats(page: number, perPage: number): Promise<ChatListResponse> {
+  async findMyChats(page: number, perPage: number): Promise<ChatListResponse> {
     throw new Error("Method not implemented.");
   }
 
