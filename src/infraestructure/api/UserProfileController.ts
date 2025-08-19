@@ -303,10 +303,7 @@ export class UserProfileController {
     if (!userIds.length) return [];
 
     // 2. Fetch full profiles and preferences for those user_ids
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("*")
-      .in("user_id", userIds);
+    const { data: profiles, error: profilesError } = await supabase.from("profiles").select("*").in("user_id", userIds);
 
     if (profilesError) {
       throw new Error("Error fetching profiles: " + profilesError.message);
