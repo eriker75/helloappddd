@@ -1,11 +1,10 @@
 import { Avatar, AvatarImage, Text } from "@/components/ui";
 import {
-  useCanSwipe,
-  useFetchSwipeableProfiles,
-  useSwipeableProfilesState,
-  useSwipeProfile,
-} from "@/src/presentation/services/SwipeableProfilesService";
+  useLoadSwipeableProfiles,
+  useSwipeProfile
+} from "@/src/presentation/services/UserProfileService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
+import { useNearbySwipeableProfilesStore } from "@/src/presentation/stores/nearby-swipeable-profiles.store";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Key, useRef, useState } from "react";
@@ -83,10 +82,11 @@ const SwipeScreen = () => {
     "maxDistancePreference:",
     maxDistancePreference
   );
-  useFetchSwipeableProfiles(userId, maxDistancePreference);
-  const { nearbySwipeableProfiles, hasMore } = useSwipeableProfilesState();
-  const { swipe, isLoading: isSwiping } = useSwipeProfile(userId);
-  const canSwipe = useCanSwipe();
+  useLoadSwipeableProfiles(maxDistancePreference);
+  const { nearbySwipeableProfiles } = useNearbySwipeableProfilesStore();
+  const swipe = useSwipeProfile();
+  const canSwipe = useNearbySwipeableProfilesStore((s) => s.canSwipe());
+  const isSwiping = false; // No isLoading available in useSwipeProfile
 
   console.log(JSON.stringify(nearbySwipeableProfiles, null, 2));
 
@@ -209,7 +209,11 @@ const SwipeScreen = () => {
       let swipeResult;
       try {
         console.log("[handleSwipe] Calling swipe mutation...");
-        swipeResult = await swipe(currentProfile.userId, isLiked, null); // null: el backend debe cargar el siguiente
+        swipeResult = await swipe({
+          targetUserId: currentProfile.userId,
+          liked: isLiked,
+          newProfile: undefined
+        }); // undefined: el backend debe cargar el siguiente
         console.log("[handleSwipe] swipeResult:", swipeResult);
       } catch (err) {
         // Mostrar error pero avanzar la cola localmente
@@ -246,10 +250,7 @@ const SwipeScreen = () => {
         // Aquí podrías disparar un refetch o mostrar un mensaje al usuario
       }
       // Feedback si se alcanzó el límite
-      if (swipeResult && swipeResult.reachedDailyLimit) {
-        // Puedes mostrar un toast, modal o alerta aquí
-        console.warn("[handleSwipe] Has alcanzado el límite diario de swipes.");
-      }
+      // No se puede comprobar reachedDailyLimit porque swipe no retorna nada
       console.log("[handleSwipe] End of function");
     } catch (err) {
       console.error("[handleSwipe] Unhandled error:", err);
