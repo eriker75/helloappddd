@@ -79,7 +79,6 @@ const AllowLocationScreen = () => {
 
       // 5. Llamar al servicio de onboarding para guardar los datos
       // Validar campos requeridos antes de enviar
-      const missingFields: string[] = [];
       // Esperar a que el store se actualice y luego armar el payload
       setTimeout(() => {
         const latestStore = useOnboardingStore.getState();
@@ -97,11 +96,11 @@ const AllowLocationScreen = () => {
 
         // Construir payload solo con los campos requeridos y válidos
         const payload: any = {
-          user_id: userId,
+          userId: userId,
           alias: latestStore.alias,
           gender: latestStore.gender,
           biography: latestStore.biography,
-          birth_date: latestStore.birthDate
+          birthDate: latestStore.birthDate
             ? (() => {
                 // Convierte DD/MM/YYYY a YYYY-MM-DD
                 const [d, m, y] = latestStore.birthDate.split("/");
@@ -114,9 +113,9 @@ const AllowLocationScreen = () => {
           latitude: latestStore.latitude,
           longitude: latestStore.longitude,
           avatar: avatarUrl,
-          secondary_images: secondaryImagesUrls,
+          secondaryImages: secondaryImagesUrls,
           address: "Ubicación actual",
-          is_onboarded: true,
+          isOnboarded: true,
         };
 
         console.log("Payload final de onboarding:", payload);

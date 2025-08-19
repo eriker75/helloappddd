@@ -29,12 +29,12 @@ export function mapUserProfileResponseToUserProfileEntity(userProfileResponse: U
     address: userProfileResponse.address ?? "",
     latitude:
       userProfileResponse.latitude !== null && userProfileResponse.latitude !== undefined
-        ? userProfileResponse.latitude.toString()
-        : "",
+        ? Number(userProfileResponse.latitude)
+        : 0,
     longitude:
       userProfileResponse.longitude !== null && userProfileResponse.longitude !== undefined
-        ? userProfileResponse.longitude.toString()
-        : "",
+        ? Number(userProfileResponse.longitude)
+        : 0,
     minAgePreference: userProfileResponse.preferences?.min_age ?? 18,
     maxAgePreference: userProfileResponse.preferences?.max_age ?? 98,
     maxDistancePreference: userProfileResponse.preferences?.max_distance ?? 200,
@@ -62,7 +62,12 @@ export function mapExtendedUserProfileResponseToExtendedUserProfileEntity(
 export function mapPartialUserProfileToOnboardUserProfileRequest(
   partialUserProfile: Partial<UserProfile>
 ): OnboardUserProfileRequest {
-  return {
+  // LOG para depuración
+  console.log("🟡 [MAPPER] Input partialUserProfile:");
+  console.log("- secondaryImages:", partialUserProfile.secondaryImages);
+  console.log("- maxDistancePreference:", partialUserProfile.maxDistancePreference);
+
+  const mapped: OnboardUserProfileRequest = {
     userId: partialUserProfile.userId ?? "",
     alias: partialUserProfile.alias ?? "",
     gender: partialUserProfile.gender ?? 0,
@@ -74,12 +79,22 @@ export function mapPartialUserProfileToOnboardUserProfileRequest(
     latitude: partialUserProfile.latitude ? Number(partialUserProfile.latitude) : undefined,
     longitude: partialUserProfile.longitude ? Number(partialUserProfile.longitude) : undefined,
     address: partialUserProfile.address,
-    secondary_images: partialUserProfile.secondaryImages,
-    minAge: partialUserProfile.minAgePreference,
-    maxAge: partialUserProfile.maxAgePreference,
-    maxDistance: partialUserProfile.maxDistancePreference,
+    // Siempre enviar un array (aunque sea vacío)
+    secondary_images: Array.isArray(partialUserProfile.secondaryImages)
+      ? partialUserProfile.secondaryImages
+      : [],
+    minAge: partialUserProfile.minAgePreference ?? 18,
+    maxAge: partialUserProfile.maxAgePreference ?? 98,
+    maxDistance: partialUserProfile.maxDistancePreference ?? 200,
     genders: partialUserProfile.genderInterests
       ? partialUserProfile.genderInterests.map((g) => (typeof g === "string" ? Number(g) : g))
-      : undefined,
+      : [1, 2, 3],
   };
+
+  console.log("🟡 [MAPPER] Output mapped:");
+  console.log("- secondary_images:", mapped.secondary_images);
+  console.log("- maxDistance:", mapped.maxDistance);
+  console.log("- Full mapped:", JSON.stringify(mapped, null, 2));
+
+  return mapped;
 }

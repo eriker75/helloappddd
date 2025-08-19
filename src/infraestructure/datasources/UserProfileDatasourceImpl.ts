@@ -20,10 +20,18 @@ export class UserProfileDatasourceImpl implements AbstractUserProfileDatasource 
   }
 
   async updateMyUserProfile(userProfile: Partial<UserProfile>): Promise<boolean> {
-    const updateProfileRequesData = {
-      alias: userProfile.alias ?? "",
-    };
-    return await this.controller.updateMyUserProfile(updateProfileRequesData);
+    if (!userProfile.userId) {
+      throw new Error("UserProfile userId is required to update profile.");
+    }
+    // Use the full mapper to include all fields, especially secondary_images
+    const mapped = mapPartialUserProfileToOnboardUserProfileRequest(userProfile);
+    const updateProfileRequestData = {
+      ...mapped,
+      id: userProfile.userId,
+    } as any; // Cast to any to satisfy TS, or use UpdateUserProfileRequest if imported
+    // Optionally, log for debug
+    console.log("[DEBUG] updateMyUserProfile mapped data:", JSON.stringify(updateProfileRequestData, null, 2));
+    return await this.controller.updateMyUserProfile(updateProfileRequestData);
   }
 
   async deleteMyUserProfile(): Promise<boolean> {

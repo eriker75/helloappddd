@@ -227,10 +227,9 @@ export function useOnboardMyUserService() {
         setProfile(mappedData);
         // LOG: Store value after setProfile
         setTimeout(() => {
-          const store = require("@/src/presentation/stores/auth-user-profile.store");
-          // If using Zustand, getState is available
-          if (store && store.useAuthUserProfileStore && store.useAuthUserProfileStore.getState) {
-            console.log("[ONBOARDING] Store after setProfile:", JSON.stringify(store.useAuthUserProfileStore.getState(), null, 2));
+          // If using Zustand, getState is available directly on the hook
+          if (useAuthUserProfileStore.getState) {
+            console.log("[ONBOARDING] Store after setProfile:", JSON.stringify(useAuthUserProfileStore.getState(), null, 2));
           }
         }, 200);
         resetOnboarding();

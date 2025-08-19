@@ -406,6 +406,9 @@ export class UserProfileController {
   async onboardUser(onboardingData: OnboardUserProfileRequest): Promise<boolean> {
     const { id: userId } = await getAuthenticatedUser();
 
+    // LOG: Input onboardingData
+    console.log("🔵 [CONTROLLER] Input onboardingData:", onboardingData);
+
     const {
       alias,
       gender,
@@ -425,6 +428,11 @@ export class UserProfileController {
       genders = [1, 2, 3],
     } = onboardingData;
 
+    // LOG: After destructuring
+    console.log("🔵 [CONTROLLER] After destructuring:");
+    console.log("- secondary_images:", secondary_images);
+    console.log("- maxDistance:", maxDistance);
+
     if (!alias || gender === undefined) {
       throw new Error("--alias and --gender are required");
     }
@@ -439,26 +447,34 @@ export class UserProfileController {
       throw new Error("Error checking for existing profile: " + checkError.message);
     }
 
+    let finalSecondaryImages = secondary_images;
+    if (!finalSecondaryImages && onboardingData.secondary_images) {
+      finalSecondaryImages = onboardingData.secondary_images;
+    }
+
     if (existingProfiles && existingProfiles.length > 0) {
       const profileRow = existingProfiles[0];
       // Update profile if not onboarded
       if (profileRow.is_onboarded === null || profileRow.is_onboarded === false) {
+        const updateData = {
+          alias,
+          gender,
+          avatar: avatar ?? null,
+          biography: biography ?? null,
+          birth_date: birthDate ?? null,
+          is_onboarded: true,
+          is_verified: isVerified,
+          is_active: isActive,
+          latitude: latitude ?? null,
+          longitude: longitude ?? null,
+          address: address ?? null,
+          secondary_images: finalSecondaryImages ?? null,
+        };
+        console.log("🔵 UPDATE DATA - secondary_images:", updateData.secondary_images);
+
         const { error: updateProfileError } = await supabase
           .from("profiles")
-          .update({
-            alias,
-            gender,
-            avatar: avatar ?? null,
-            biography: biography ?? null,
-            birth_date: birthDate ?? null,
-            is_onboarded: true,
-            is_verified: isVerified,
-            is_active: isActive,
-            latitude: latitude ?? null,
-            longitude: longitude ?? null,
-            address: address ?? null,
-            secondary_images: secondary_images ?? null,
-          })
+          .update(updateData)
           .eq("id", profileRow.id);
 
         if (updateProfileError) {
@@ -469,26 +485,27 @@ export class UserProfileController {
       }
     } else {
       // Insert new profile
-      const { error: insertProfileError } = await supabase.from("profiles").insert([
-        {
-          user_id: userId,
-          alias,
-          gender,
-          avatar: avatar ?? null,
-          biography: biography ?? null,
-          birth_date: birthDate ?? null,
-          is_onboarded: isOnboarded,
-          is_verified: isVerified,
-          is_active: isActive,
-          latitude: latitude ?? null,
-          longitude: longitude ?? null,
-          address: address ?? null,
-          last_online: new Date().toISOString(),
-          is_online: false,
-          location: null,
-          secondary_images: secondary_images ?? null,
-        },
-      ]);
+      const insertData = {
+        user_id: userId,
+        alias,
+        gender,
+        avatar: avatar ?? null,
+        biography: biography ?? null,
+        birth_date: birthDate ?? null,
+        is_onboarded: isOnboarded,
+        is_verified: isVerified,
+        is_active: isActive,
+        latitude: latitude ?? null,
+        longitude: longitude ?? null,
+        address: address ?? null,
+        last_online: new Date().toISOString(),
+        is_online: false,
+        location: null,
+        secondary_images: finalSecondaryImages ?? null,
+      };
+      console.log("🔵 INSERT DATA - secondary_images:", insertData.secondary_images);
+
+      const { error: insertProfileError } = await supabase.from("profiles").insert([insertData]);
 
       if (insertProfileError) {
         throw new Error("Error creating profile: " + insertProfileError.message);
@@ -512,6 +529,8 @@ export class UserProfileController {
       max_distance: maxDistance,
       genders,
     };
+
+    console.log("🔵 PREFERENCES FIELDS:", preferencesFields);
 
     if (existingPrefs && existingPrefs.length > 0) {
       // Update
