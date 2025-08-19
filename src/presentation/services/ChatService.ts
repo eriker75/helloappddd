@@ -1,3 +1,4 @@
+import { Message } from "@/src/domain/entities/Message";
 import {
   fetchMyChatMessages,
   fetchMyChats,
@@ -10,11 +11,6 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useChatListStore } from "../stores/chat-list.store";
 import { useCurrentChatMessagesStore } from "../stores/current-chat-messages.store";
-
-/**
- * Hook to send a message to a chat and sync with currentChatStore and chatListStore.
- */
-import { Message } from "@/src/domain/entities/Message";
 
 /**
  * Hook to mark all messages from a chat as read and sync with currentChatStore.

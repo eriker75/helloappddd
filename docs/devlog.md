@@ -40,3 +40,17 @@
 - Used repository hooks for all async operations, matching the approach in `UserProfileService.ts`.
 - Improved error handling and rollback logic in mutation hooks.
 - See [2025-08-17-refactor-chat-service.md](2025-08-17-refactor-chat-service.md) for full details and rationale.
+
+## 2025-08-19
+
+- Fixed the `createChat` method in `ChatController` to use all parameters from `CreateChatRequest` and return a `ChatResponse` object.
+- Now inserts all relevant fields into the `chats` table and returns the created chat with the correct interface.
+- See [2025-08-19-fix-create-chat-method.md](2025-08-19-fix-create-chat-method.md) for details.
+
+- Extracted user authentication logic into a reusable helper ([src/utils/getAuthenticatedUser.ts](../src/utils/getAuthenticatedUser.ts)) and refactored `createChat` to use it for consistency and maintainability.
+
+> Nota: Antes de modificar cualquier método de un controlador, revisa siempre la estructura de la base de datos en `database.md` en la raíz del proyecto.
+
+- Los tipos de chat soportados actualmente son:
+  - `private`: chat individual de dos personas. El arreglo `participants` debe tener exactamente un usuario (el otro es el creador, que se agrega automáticamente por trigger).
+  - `group`: chat grupal, el arreglo `participants` puede tener varios usuarios.
