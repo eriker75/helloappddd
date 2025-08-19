@@ -39,33 +39,42 @@ export function useGetCurrentUserProfileByUserId(userId: string) {
   };
 }
 
+const LOW_QUEUE_THRESHOLD = 2;
+
 export function useLoadSwipeableProfiles(maxDistance: number) {
   const nearbySwipeableProfilesInStore = useNearbySwipeableProfilesStore((s) => s.nearbySwipeableProfiles);
   const loadInitialNearbySwipeableProfiles = useNearbySwipeableProfilesStore((s) => s.loadInitialProfiles);
-  // Removed: const swipeProfile = useNearbySwipeableProfilesStore((s) => s.swipeProfile);
-  const { data: swipeableProfilesRequested, ...rest } = useListNearbySwipeableProfiles(
+  const appendNearbySwipeableProfiles = useNearbySwipeableProfilesStore((s) => s.appendProfiles);
+
+  // Fetch 5 if empty, otherwise 5 if low, otherwise 1 (to keep react-query happy)
+  const shouldPrefetch = nearbySwipeableProfilesInStore.length > 0 && nearbySwipeableProfilesInStore.length <= LOW_QUEUE_THRESHOLD;
+  const fetchLimit = nearbySwipeableProfilesInStore.length === 0 || shouldPrefetch ? 5 : 1;
+
+  const { data: swipeableProfilesRequested, isLoading, isFetching, ...rest } = useListNearbySwipeableProfiles(
     maxDistance,
-    nearbySwipeableProfilesInStore.length === 0 ? 5 : 1
+    fetchLimit
   );
 
-  // Move all state updates into an effect to avoid React render errors
   useEffect(() => {
-    if (!rest.isLoading && !rest.isFetching && swipeableProfilesRequested) {
+    if (!isLoading && !isFetching && swipeableProfilesRequested) {
       if (nearbySwipeableProfilesInStore.length === 0) {
         loadInitialNearbySwipeableProfiles(swipeableProfilesRequested);
+      } else if (shouldPrefetch) {
+        appendNearbySwipeableProfiles(swipeableProfilesRequested);
       }
-      // Removed: if (nearbySwipeableProfilesInStore.length > 0 && nearbySwipeableProfilesInStore.length < 5) { swipeProfile(swipeableProfilesRequested[0] ?? null); }
-      // If you want to append new profiles when running low, implement an appendProfiles method in the store and call it here.
     }
-    // Only run when relevant data changes
   }, [
-    rest.isLoading,
-    rest.isFetching,
+    isLoading,
+    isFetching,
     swipeableProfilesRequested,
     nearbySwipeableProfilesInStore.length,
     loadInitialNearbySwipeableProfiles,
-    // Removed: swipeProfile,
+    appendNearbySwipeableProfiles,
+    shouldPrefetch,
   ]);
+
+  // Return loading/fetching state for UI
+  return { isLoading, isFetching };
 }
 
 export function useSwipeProfile() {

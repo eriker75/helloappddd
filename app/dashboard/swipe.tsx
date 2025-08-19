@@ -8,6 +8,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Key, useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Pressable,
@@ -72,13 +73,69 @@ const extractS3KeyFromUrl = (url: string): string | null => {
   return match ? match[1] : null;
 };
 
+const SwipeLimitReachedView = ({ onGoHome }: { onGoHome?: () => void }) => (
+  <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: "#5BC6EA" }}>
+    <Image
+      source={require("@/assets/images/avatar-placeholder.png")}
+      style={{
+        width: width * 0.5,
+        height: width * 0.5,
+        borderRadius: (width * 0.5) / 2,
+        marginTop: 40,
+        marginBottom: 16,
+      }}
+      resizeMode="cover"
+    />
+    <Text
+      className="text-white text-[24px] font-bold text-center mt-6 mb-2"
+      style={{
+        textShadowColor: "rgba(0,0,0,0.7)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+      }}
+    >
+      ¡Has conocido a muchas personas hoy!
+    </Text>
+    <Text
+      className="text-white text-[18px] font-normal text-center opacity-90 mb-4"
+      style={{
+        textShadowColor: "rgba(0,0,0,0.7)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      }}
+    >
+      Has llegado al límite de swipes por hoy. ¡Tómate un descanso, recarga energías y vuelve mañana para seguir descubriendo nuevas conexiones!
+    </Text>
+    <Text
+      className="text-white text-[16px] font-normal text-center opacity-80 mb-8"
+      style={{
+        textShadowColor: "rgba(0,0,0,0.7)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      }}
+    >
+      Recuerda: lo mejor de conocer gente es que cada día trae nuevas sorpresas. ¡Nos vemos mañana!
+    </Text>
+    {onGoHome && (
+      <Pressable
+        onPress={onGoHome}
+        className="px-6 py-3 rounded-full bg-white"
+        style={{ marginTop: 10 }}
+      >
+        <Text className="text-[#5BC6EA] text-[18px] font-bold">Volver al inicio</Text>
+      </Pressable>
+    )}
+  </SafeAreaView>
+);
+
 const SwipeScreen = () => {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
-  useLoadSwipeableProfiles(2000);
+  const { isLoading, isFetching } = useLoadSwipeableProfiles(2000);
   const { avatar: authAvatar } = useAuthUserProfileStore();
   const { swipe, isPending: isPendingSwipe, isError: isErrorSwiping } = useSwipeProfile();
   const nearbySwipeableProfiles = useNearbySwipeableProfilesStore((s) => s.nearbySwipeableProfiles);
+  const canSwipe = useNearbySwipeableProfilesStore((s) => s.canSwipe());
   const [photoIndex, setPhotoIndex] = useState(0);
   const currentProfile = nearbySwipeableProfiles[0];
 
@@ -89,12 +146,17 @@ const SwipeScreen = () => {
   // Helper to get all image URLs (avatar + secondaryImages)
   const getImageUrls = useCallback(() => {
     const profile = currentProfile;
-    if (!profile) return [];
-    return [
+    if (!profile) {
+      console.log('No current profile for getImageUrls');
+      return [];
+    }
+    const urls = [
       profile.avatar,
       ...(Array.isArray(profile.secondaryImages) ? profile.secondaryImages.slice(0, 4) : []),
     ].filter(Boolean);
-  }, [currentProfile]);
+    console.log(`[${profile.alias}] Raw image URLs:`, urls);
+    return urls;
+  }, [currentProfile?.userId, currentProfile?.avatar, currentProfile?.secondaryImages]);
 
   // Function to check if a signed URL is expired
   const isSignedUrlExpired = (url: string): boolean => {
@@ -130,6 +192,13 @@ const SwipeScreen = () => {
   };
 
   // Effect to resolve signed URLs for all images of the current profile
+  // Add cache buster to image URLs
+  const addCacheBuster = (url: string, userId: string): string => {
+    if (!url) return url;
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}cache=${userId}-${Date.now()}`;
+  };
+
   useEffect(() => {
     let isMounted = true;
     setResolvedImages([]); // Reset images immediately when profile changes
@@ -311,42 +380,75 @@ const SwipeScreen = () => {
         }}
       >
         {nearbySwipeableProfiles.length === 0 ? (
-          <View
-            className="relative items-center justify-center"
-            style={{ width, height: height - IMAGE_AREA_TOP - IMAGE_AREA_BOTTOM }}
-          >
-            <Image
-              source={require("@/assets/images/avatar-placeholder.png")}
-              style={{
-                width: width * 0.5,
-                height: width * 0.5,
-                borderRadius: (width * 0.5) / 2,
-                marginTop: 40,
-                marginBottom: 16,
-              }}
-              resizeMode="cover"
-            />
-            <Text
-              className="text-white text-[22px] font-bold text-center mt-6 mb-2"
-              style={{
-                textShadowColor: "rgba(0,0,0,0.7)",
-                textShadowOffset: { width: 0, height: 1 },
-                textShadowRadius: 3,
-              }}
+          isLoading || isFetching ? (
+            <View
+              className="relative items-center justify-center"
+              style={{ width, height: height - IMAGE_AREA_TOP - IMAGE_AREA_BOTTOM }}
             >
-              No hay más perfiles cerca
-            </Text>
-            <Text
-              className="text-white text-[16px] font-normal text-center opacity-80"
-              style={{
-                textShadowColor: "rgba(0,0,0,0.7)",
-                textShadowOffset: { width: 0, height: 1 },
-                textShadowRadius: 2,
-              }}
+              <Image
+                source={require("@/assets/images/avatar-placeholder.png")}
+                style={{
+                  width: width * 0.5,
+                  height: width * 0.5,
+                  borderRadius: (width * 0.5) / 2,
+                  marginTop: 40,
+                  marginBottom: 16,
+                }}
+                resizeMode="cover"
+              />
+              <Text
+                className="text-white text-[20px] font-bold text-center mt-6 mb-2"
+                style={{
+                  textShadowColor: "rgba(0,0,0,0.7)",
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 3,
+                }}
+              >
+                Buscando nuevas personas cerca...
+              </Text>
+              <View style={{ marginTop: 24 }}>
+                {/* Spinner */}
+                <ActivityIndicator size="large" color="#fff" />
+              </View>
+            </View>
+          ) : (
+            <View
+              className="relative items-center justify-center"
+              style={{ width, height: height - IMAGE_AREA_TOP - IMAGE_AREA_BOTTOM }}
             >
-              Intenta actualizar más tarde o ajusta tus filtros de búsqueda.
-            </Text>
-          </View>
+              <Image
+                source={require("@/assets/images/avatar-placeholder.png")}
+                style={{
+                  width: width * 0.5,
+                  height: width * 0.5,
+                  borderRadius: (width * 0.5) / 2,
+                  marginTop: 40,
+                  marginBottom: 16,
+                }}
+                resizeMode="cover"
+              />
+              <Text
+                className="text-white text-[22px] font-bold text-center mt-6 mb-2"
+                style={{
+                  textShadowColor: "rgba(0,0,0,0.7)",
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 3,
+                }}
+              >
+                No hay más perfiles cerca
+              </Text>
+              <Text
+                className="text-white text-[16px] font-normal text-center opacity-80"
+                style={{
+                  textShadowColor: "rgba(0,0,0,0.7)",
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 2,
+                }}
+              >
+                Intenta actualizar más tarde o ajusta tus filtros de búsqueda.
+              </Text>
+            </View>
+          )
         ) : currentProfile && resolvedImages.length > 0 ? (
           <ScrollView
             ref={scrollViewRef}
@@ -394,7 +496,7 @@ const SwipeScreen = () => {
                       }}
                     >
                       <Image
-                        source={
+                        key={`img-${currentProfile?.userId}-${index}-${imgSrc?.substring(0, 20)}`} source={
                           imgSrc && imgSrc.length > 0
                             ? { uri: imgSrc }
                             : require("@/assets/images/avatar-placeholder.png")
@@ -427,7 +529,7 @@ const SwipeScreen = () => {
                     }}
                   >
                     <Image
-                      source={
+                      key={`img-${currentProfile?.userId}-${index}-${imgSrc?.substring(0, 20)}`} source={
                         imgSrc && imgSrc.length > 0
                           ? { uri: imgSrc }
                           : require("@/assets/images/avatar-placeholder.png")

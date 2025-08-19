@@ -120,7 +120,10 @@ export function useCreateSwipe(): UseMutationResult<boolean, unknown, { targetUs
   return useMutation({
     mutationFn: ({ targetUserId, liked }) => datasource.createSwipe(targetUserId, liked),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+      // Invalidate specifically the swipeable profiles query and matches
+      queryClient.invalidateQueries({ queryKey: ["userProfile", "listNearbySwipeableProfiles"] });
+      queryClient.invalidateQueries({ queryKey: ["userProfile", "listNearbyMatches"] });
+      queryClient.invalidateQueries({ queryKey: ["userProfile", "listMyMatches"] });
     },
   });
 }

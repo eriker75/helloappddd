@@ -49,6 +49,7 @@ export interface NearbySwipeableProfilesAction {
   swipeProfile: (newProfile: NearbySwipeableProfile | null) => void;
   restoreSwipeableProfile: () => void;
 
+  appendProfiles: (profiles: NearbySwipeableProfile[]) => void;
 }
 
 export type NearbySwipeableProfilesStore = NearbySwipeableProfilesState &
@@ -114,6 +115,17 @@ const nearbySwipeableProfilesStoreCreator: StateCreator<
           MAX_SWIPEABLE_PROFILES_BATCH
         );
         state.hasMore = profiles.length > MAX_SWIPEABLE_PROFILES_BATCH;
+      });
+    },
+
+    appendProfiles: (profiles: NearbySwipeableProfile[]) => {
+      set((state) => {
+        // Avoid duplicates by userId
+        const existingIds = new Set(state.nearbySwipeableProfiles.map(p => p.userId));
+        const newProfiles = profiles.filter(p => !existingIds.has(p.userId));
+        state.nearbySwipeableProfiles.push(...newProfiles);
+        // Update hasMore if we have more than the batch size
+        state.hasMore = state.nearbySwipeableProfiles.length > MAX_SWIPEABLE_PROFILES_BATCH;
       });
     },
 
