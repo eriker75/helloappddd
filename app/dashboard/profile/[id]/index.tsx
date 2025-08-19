@@ -26,6 +26,9 @@ function getExcerpt(text: string, maxLength: number = 140): string {
 export default function UserProfileByIdScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [signedImages, setSignedImages] = useState<(string | number)[]>([]);
+  const [signedAvatar, setSignedAvatar] = useState<string | null>(null);
+  const [signing, setSigning] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Get current profile from store for fast initial render
@@ -34,9 +37,72 @@ export default function UserProfileByIdScreen() {
   // Fetch and update profile for visited user on mount
   const { isLoading, error } = useGetCurrentUserProfileByUserId(id as string);
 
+  // Utility to extract S3 key from a Supabase Storage URL
+  function extractS3KeyFromUrl(url: string): string | null {
+    // Example: .../helloapp/profiles/uuid/secondary_1.jpg?...  -> profiles/uuid/secondary_1.jpg
+    const match = url.match(/\/helloapp\/(.+?)(\?|$)/);
+    if (match && match[1]) {
+      return match[1];
+    }
+    return null;
+  }
+
+  React.useEffect(() => {
+    async function signImagesAndAvatar() {
+      if (!userProfile?.secondaryImages || userProfile.secondaryImages.length === 0) {
+        setSignedImages([PROFILE_IMAGE]);
+      } else {
+        setSigning(true);
+        try {
+          const { getSignedUrlForKey } = await import("@/src/utils/supabaseS3Storage");
+          const promises = userProfile.secondaryImages.map(async (img: string) => {
+            if (typeof img !== "string") return img;
+            const key = extractS3KeyFromUrl(img);
+            if (!key) return img;
+            try {
+              const signed = await getSignedUrlForKey(key, 3600);
+              return signed;
+            } catch (err) {
+              console.warn("Failed to sign image", img, err);
+              return img;
+            }
+          });
+          const results = await Promise.all(promises);
+          setSignedImages(results);
+
+          // Sign avatar if present
+          if (userProfile.avatar && typeof userProfile.avatar === "string") {
+            const avatarKey = extractS3KeyFromUrl(userProfile.avatar);
+            if (avatarKey) {
+              try {
+                const signedAvatarUrl = await getSignedUrlForKey(avatarKey, 3600);
+                setSignedAvatar(signedAvatarUrl);
+              } catch (err) {
+                console.warn("Failed to sign avatar", userProfile.avatar, err);
+                setSignedAvatar(userProfile.avatar);
+              }
+            } else {
+              setSignedAvatar(userProfile.avatar);
+            }
+          } else {
+            setSignedAvatar(null);
+          }
+        } catch (err) {
+          console.warn("Error importing getSignedUrlForKey or signing images", err);
+          setSignedImages(userProfile.secondaryImages);
+          setSignedAvatar(userProfile.avatar ?? null);
+        }
+        setSigning(false);
+      }
+    }
+    signImagesAndAvatar();
+    // Only re-run if the images or avatar change
+
+  }, [userProfile.avatar, userProfile.secondaryImages]);
+
   const images =
-    userProfile?.secondaryImages && userProfile.secondaryImages.length > 0
-      ? userProfile.secondaryImages
+    signedImages && signedImages.length > 0
+      ? signedImages
       : [PROFILE_IMAGE];
 
   const handlePrevImage = () => {
@@ -57,7 +123,7 @@ export default function UserProfileByIdScreen() {
     setCurrentImageIndex(currentIndex);
   };
 
-  if (isLoading) {
+  if (isLoading || signing) {
     return (
       <View style={styles.centered}>
         <Text>Cargando perfil...</Text>
@@ -130,7 +196,7 @@ export default function UserProfileByIdScreen() {
           {/* Avatar overlapping */}
           <View style={styles.avatarWrapper}>
             <Avatar size="xl">
-              <AvatarImage source={userProfile.avatar ? { uri: userProfile.avatar } : AVATAR_PLACEHOLDER} />
+              <AvatarImage source={signedAvatar ? { uri: signedAvatar } : AVATAR_PLACEHOLDER} />
               <AvatarBadge />
             </Avatar>
           </View>

@@ -17,9 +17,42 @@ export class UserProfileController {
       .eq("user_id", userId)
       .single();
 
+    // Log raw profile from DB
+    // Cyan
+
+    console.log(
+      "\x1b[36m[UserProfileController] Raw profile from DB:\n" +
+        JSON.stringify(profile, null, 2) +
+        "\x1b[0m"
+    );
+
     if (profileError || !profile) {
       throw new Error("User profile not found: " + (profileError?.message || "Not found"));
     }
+
+    // Ensure secondary_images is always an array
+    let secondaryImages: string[] = [];
+    if (Array.isArray(profile.secondary_images)) {
+      secondaryImages = profile.secondary_images;
+    } else if (typeof profile.secondary_images === "string") {
+      try {
+        secondaryImages = JSON.parse(profile.secondary_images);
+        if (!Array.isArray(secondaryImages)) secondaryImages = [];
+      } catch {
+        secondaryImages = [];
+      }
+    } else if (profile.secondary_images == null) {
+      secondaryImages = [];
+    }
+
+    // Log processed secondaryImages
+    // Yellow
+
+    console.log(
+      "\x1b[33m[UserProfileController] Processed secondaryImages:\n" +
+        JSON.stringify(secondaryImages, null, 2) +
+        "\x1b[0m"
+    );
 
     // Fetch preferences
     const { data: preferences, error: preferencesError } = await supabase
@@ -32,19 +65,21 @@ export class UserProfileController {
       throw new Error("Error fetching user preferences: " + preferencesError.message);
     }
 
-    // Fetch user info from auth.users
-    const { data: user, error: userError } = await supabase.from("users").select("*").eq("id", userId).single();
-
-    if (userError && userError.code !== "PGRST116") {
-      throw new Error("Error fetching user info: " + userError.message);
-    }
-
-    // Compose UserProfileResponse
+    // Compose UserProfileResponse (without user field)
     const response: UserProfileResponse = {
       ...profile,
+      secondary_images: secondaryImages,
       preferences: preferences ?? null,
-      user: user ?? null,
     };
+
+    // Log final response
+    // Green
+
+    console.log(
+      "\x1b[32m[UserProfileController] Final UserProfileResponse:\n" +
+        JSON.stringify(response, null, 2) +
+        "\x1b[0m"
+    );
 
     return response;
   }

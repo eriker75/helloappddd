@@ -1,3 +1,10 @@
+## 2025-08-19 - Fix "public.users does not exist" Error on Profile Fetch
+
+- Documented and resolved the error caused by missing `public.users` table when fetching user profiles.
+- Added instructions and SQL to create a `public.users` view exposing fields from `auth.users` for Supabase compatibility.
+- No code changes required; fix is a database migration.
+- See [2025-08-19-fix-public-users-view.md](2025-08-19-fix-public-users-view.md) for full details and rationale.
+
 ## 2025-08-19 - Fix Swipe Queue Prefetch to Prevent "No Profiles" Flash
 
 - Implemented prefetch and append logic for the swipeable profiles queue to avoid the "no profiles available" flash after several swipes.
