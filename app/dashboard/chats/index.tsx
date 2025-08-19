@@ -6,7 +6,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { useUserChatsService } from "@/src/presentation/services/ChatService";
+import { useGetChatsService } from "@/src/presentation/services/ChatService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import formatMessageTime from "@/src/utils/formatMessageTime";
 import { useRouter } from "expo-router";
@@ -129,9 +129,10 @@ const ChatListItem = ({
 
 const ChatScreen = () => {
   const router = useRouter();
-  const { userId, avatar, isLoading: isUserLoading } = useAuthUserProfileStore();
+  const { avatar, isLoading: isUserLoading } = useAuthUserProfileStore();
 
-  const { data: chats, isLoading, error } = useUserChatsService(userId || "");
+  // Use service and store for chat list
+  const { chats, isLoading, isError, total } = useGetChatsService();
 
   // Debug: Log chat IDs to check for missing/duplicate keys
   if (__DEV__ && Array.isArray(chats)) {
@@ -170,7 +171,7 @@ const ChatScreen = () => {
         }}
       >
         <Text style={{ fontWeight: "bold", fontSize: 26, color: "#222" }}>
-          Chats
+          Chats{typeof total === "number" && total > 0 ? ` (${total})` : ""}
         </Text>
         <Avatar size="md">
           <AvatarImage
@@ -196,11 +197,11 @@ const ChatScreen = () => {
           {/* Circular progress spinner */}
           <Spinner size="large" color="#4fc3f7" />
         </View>
-      ) : error ? (
+      ) : isError ? (
         <View
           style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
         >
-          <Text>{error.message || "Error cargando chats"}</Text>
+          <Text>{"Error cargando chats"}</Text>
         </View>
       ) : !chats || chats.length === 0 ? (
         <View
@@ -236,17 +237,17 @@ const ChatScreen = () => {
         <FlatList
           data={chats}
           keyExtractor={(chat: any, index: number) => {
-            if (!chat.id) {
+            if (!chat.chatId) {
               if (__DEV__) {
                 console.warn(
-                  `[ChatList] Missing id for chat at index ${index}:`,
+                  `[ChatList] Missing chatId for chat at index ${index}:`,
                   chat
                 );
               }
               // Fallback to index as key (not ideal, but prevents React warning)
               return `fallback-key-${index}`;
             }
-            return chat.id;
+            return chat.chatId;
           }}
           renderItem={({ item: chat }: { item: any }) => {
             // You may want to adapt this logic if you need to show group/individual avatars/names
@@ -262,7 +263,7 @@ const ChatScreen = () => {
 
             return (
               <ChatListItem
-                id={chat.id}
+                id={chat.chatId}
                 name={name}
                 avatar={avatar}
                 loading={false}

@@ -1,18 +1,11 @@
 import { Avatar, AvatarBadge, AvatarImage } from "@/components/ui";
 import { Text } from "@/components/ui/text";
-import { useGetUserProfileByIdService } from "@/src/presentation/services/UserProfileService";
-import { currentUserProfileStore } from "@/src/presentation/stores/current-user-profile.store";
+import { useGetCurrentUserProfileByUserId } from "@/src/presentation/services/UserProfileService";
+import { useCurrentUserProfileStore } from "@/src/presentation/stores/current-user-profile.store";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import React, { useRef, useState } from "react";
-import {
-  Dimensions,
-  ImageBackground,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Dimensions, ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 
 const { width } = Dimensions.get("window");
 const PROFILE_IMAGE = require("@/assets/images/profile-bg.jpg");
@@ -36,10 +29,10 @@ export default function UserProfileByIdScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Get current profile from store for fast initial render
-  const userProfile = currentUserProfileStore();
+  const userProfile = useCurrentUserProfileStore();
 
   // Fetch and update profile for visited user on mount
-  const { isLoading, error } = useGetUserProfileByIdService(id as string);
+  const { isLoading, error } = useGetCurrentUserProfileByUserId(id as string);
 
   const images =
     userProfile?.secondaryImages && userProfile.secondaryImages.length > 0
@@ -47,15 +40,13 @@ export default function UserProfileByIdScreen() {
       : [PROFILE_IMAGE];
 
   const handlePrevImage = () => {
-    const newIndex =
-      currentImageIndex > 0 ? currentImageIndex - 1 : images.length - 1;
+    const newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : images.length - 1;
     setCurrentImageIndex(newIndex);
     scrollViewRef.current?.scrollTo({ x: newIndex * width, animated: true });
   };
 
   const handleNextImage = () => {
-    const newIndex =
-      currentImageIndex < images.length - 1 ? currentImageIndex + 1 : 0;
+    const newIndex = currentImageIndex < images.length - 1 ? currentImageIndex + 1 : 0;
     setCurrentImageIndex(newIndex);
     scrollViewRef.current?.scrollTo({ x: newIndex * width, animated: true });
   };
@@ -97,10 +88,7 @@ export default function UserProfileByIdScreen() {
               {images.map((_: any, index: React.Key | null | undefined) => (
                 <View
                   key={index}
-                  style={[
-                    styles.pageIndicator,
-                    index === currentImageIndex && styles.activePageIndicator,
-                  ]}
+                  style={[styles.pageIndicator, index === currentImageIndex && styles.activePageIndicator]}
                 />
               ))}
             </View>
@@ -129,17 +117,11 @@ export default function UserProfileByIdScreen() {
           {/* Navigation arrows */}
           {images.length > 1 && (
             <>
-              <TouchableOpacity
-                style={[styles.navButton, styles.leftNavButton]}
-                onPress={handlePrevImage}
-              >
+              <TouchableOpacity style={[styles.navButton, styles.leftNavButton]} onPress={handlePrevImage}>
                 <Ionicons name="chevron-back" size={24} color="white" />
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.navButton, styles.rightNavButton]}
-                onPress={handleNextImage}
-              >
+              <TouchableOpacity style={[styles.navButton, styles.rightNavButton]} onPress={handleNextImage}>
                 <Ionicons name="chevron-forward" size={24} color="white" />
               </TouchableOpacity>
             </>
@@ -148,13 +130,7 @@ export default function UserProfileByIdScreen() {
           {/* Avatar overlapping */}
           <View style={styles.avatarWrapper}>
             <Avatar size="xl">
-              <AvatarImage
-                source={
-                  userProfile.avatar
-                    ? { uri: userProfile.avatar }
-                    : AVATAR_PLACEHOLDER
-                }
-              />
+              <AvatarImage source={userProfile.avatar ? { uri: userProfile.avatar } : AVATAR_PLACEHOLDER} />
               <AvatarBadge />
             </Avatar>
           </View>
@@ -185,9 +161,7 @@ export default function UserProfileByIdScreen() {
         {/* Action button at bottom */}
         <View style={styles.actionButtonWrapper}>
           <TouchableOpacity style={styles.actionButton}>
-            <Text style={styles.actionButtonText}>
-              ¡Hola, {userProfile.alias || "Usuario"}! 👋
-            </Text>
+            <Text style={styles.actionButtonText}>¡Hola, {userProfile.alias || "Usuario"}! 👋</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

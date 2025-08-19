@@ -1,24 +1,11 @@
-import {
-  Box,
-  HStack,
-  Pressable,
-  Text,
-  VStack,
-} from "@/components/ui";
+import { Box, HStack, Pressable, Text, VStack } from "@/components/ui";
 import { Textarea, TextareaInput } from "@/components/ui/textarea";
-import { useGetMessages } from "@/src/infraestructure/repositories/ChatRepositoryImpl";
-import { currentChatStore } from "@/src/presentation/stores/current-chat.store";
+import { useGetChatMessagesService, useSendMessageToChatService } from "@/src/presentation/services/ChatService";
 import formatMessageTime from "@/src/utils/formatMessageTime";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useRef, useState } from "react";
-import {
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
-} from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { FlatList, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet } from "react-native";
 
 const ChatHeader = () => (
   <Box style={styles.header}>
@@ -30,10 +17,11 @@ const ChatHeader = () => (
         flex: 1,
       }}
     >
-      <Pressable onPress={() => {
-        // @ts-expect-error: dynamic navigation
-        router.replace({ pathname: "/dashboard/chats" });
-      }}>
+      <Pressable
+        onPress={() => {
+          router.replace({ pathname: "/dashboard/chats" });
+        }}
+      >
         <MaterialIcons name="arrow-back" size={24} color="#222" />
       </Pressable>
       <VStack style={{ flex: 1, alignItems: "center" }}>
@@ -52,15 +40,7 @@ const DateSeparator = ({ label }: { label: string }) => (
   </Box>
 );
 
-const ChatBubble = ({
-  text,
-  fromMe,
-  time,
-}: {
-  text: string;
-  fromMe: boolean;
-  time: string;
-}) => (
+const ChatBubble = ({ text, fromMe, time }: { text: string; fromMe: boolean; time: string }) => (
   <HStack
     space="md"
     style={{
@@ -76,9 +56,7 @@ const ChatBubble = ({
         { alignSelf: fromMe ? "flex-end" : "flex-start" },
       ]}
     >
-      <Text style={fromMe ? styles.bubbleTextMe : styles.bubbleTextOther}>
-        {text}
-      </Text>
+      <Text style={fromMe ? styles.bubbleTextMe : styles.bubbleTextOther}>{text}</Text>
       <Text
         style={{
           fontSize: 11,
@@ -125,7 +103,7 @@ const ChatInputBar = ({
             numberOfLines={1}
             className="outline-none border-none"
             multiline
-            onContentSizeChange={e => {
+            onContentSizeChange={(e) => {
               const newHeight = Math.max(40, Math.min(e.nativeEvent.contentSize.height, 120));
               setInputHeight(newHeight);
             }}
@@ -136,11 +114,7 @@ const ChatInputBar = ({
       <Pressable style={styles.imageButton}>
         <MaterialIcons name="image" size={22} color="#666" />
       </Pressable>
-      <Pressable
-        style={styles.sendButton}
-        onPress={onSend}
-        disabled={sending || !value.trim()}
-      >
+      <Pressable style={styles.sendButton} onPress={onSend} disabled={sending || !value.trim()}>
         <MaterialIcons name="send" size={22} color="#fff" />
       </Pressable>
     </HStack>
@@ -151,40 +125,29 @@ const ChatScreen = () => {
   const flatListRef = useRef<FlatList>(null);
   const { chatId } = useLocalSearchParams<{ chatId: string }>();
 
-  // Fetch messages using repository hook
-  const { data: messages, isLoading, error } = useGetMessages(chatId || "");
-  const setMessages = currentChatStore((s: any) => s.setMessages);
-  const storeMessages = currentChatStore((s: any) => s.messages);
+  // Use service hook for fetching and syncing messages
+  const { messages: storeMessages, isLoading, isError } = useGetChatMessagesService(chatId || "");
 
-  // Sync fetched messages to store
-  React.useEffect(() => {
-    if (messages && Array.isArray(messages)) {
-      const mapped = messages.map((msg: any) => ({
-        messageId: msg.id,
-        createdAt: typeof msg.createdAt === "string" ? msg.createdAt : msg.createdAt?.toISOString?.() ?? "",
-        updatedAt: typeof msg.updatedAt === "string" ? msg.updatedAt : msg.updatedAt?.toISOString?.() ?? "",
-        content: msg.content,
-        draftContent: msg.draftContent,
-        senderId: msg.senderId,
-        parentId: msg.parentId ?? "",
-        type: msg.type,
-        readed: false,
-        deleted: false,
-      }));
-      setMessages(mapped);
-    }
-  }, [messages, setMessages]);
+  // Use service hook for sending messages
+  const { sendMessage, status } = useSendMessageToChatService(chatId || "");
+  const isSending = status === "pending";
 
   // Auto-scroll to bottom when new messages arrive
-  React.useEffect(() => {
-    if (storeMessages.length === 0) return;
+  useEffect(() => {
+    if (!storeMessages || storeMessages.length === 0) return;
     flatListRef.current?.scrollToIndex({ index: 0, animated: true });
-  }, [storeMessages.length]);
+  }, [storeMessages, storeMessages.length]);
 
   const [input, setInput] = useState("");
 
-  // Minimal send handler (no backend integration)
+  // Send handler using service
   const handleSend = () => {
+    if (!input.trim()) return;
+    sendMessage({
+      content: input.trim(),
+      createdAt: new Date(),
+      // Add other required fields as needed
+    });
     setInput("");
   };
 
@@ -207,7 +170,7 @@ const ChatScreen = () => {
             >
               <Text>Cargando mensajes...</Text>
             </Box>
-          ) : error ? (
+          ) : isError ? (
             <Box
               style={{
                 flex: 1,
@@ -221,17 +184,11 @@ const ChatScreen = () => {
             <FlatList
               ref={flatListRef}
               data={storeMessages}
-              keyExtractor={(item, idx) =>
-                `${item.messageId}-${item.createdAt}-${idx}`
-              }
+              keyExtractor={(item, idx) => `${item.messageId}-${item.createdAt}-${idx}`}
               renderItem={({ item, index }) => (
                 <>
                   {index === 0 && <DateSeparator label="Hoy" />}
-                  <ChatBubble
-                    text={item.content || ""}
-                    fromMe={false}
-                    time={item.createdAt}
-                  />
+                  <ChatBubble text={item.content || ""} fromMe={false} time={item.createdAt} />
                 </>
               )}
               contentContainerStyle={styles.messagesContainer}
@@ -239,12 +196,7 @@ const ChatScreen = () => {
               inverted={true}
             />
           )}
-          <ChatInputBar
-            value={input}
-            onChangeText={setInput}
-            onSend={handleSend}
-            sending={false}
-          />
+          <ChatInputBar value={input} onChangeText={setInput} onSend={handleSend} sending={isSending} />
         </Box>
       </KeyboardAvoidingView>
     </SafeAreaView>
