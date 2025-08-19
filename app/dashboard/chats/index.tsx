@@ -6,6 +6,8 @@ import { HStack } from "@/components/ui/hstack";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { useUserChatsService } from "@/src/presentation/services/ChatService";
+import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import formatMessageTime from "@/src/utils/formatMessageTime";
 import { useRouter } from "expo-router";
 import {
@@ -18,8 +20,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useUserChatsService } from "@/src/presentation/services/ChatService";
-import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 const ChatsNotFound = require("@/assets/images/ChatsNotFound.png");
 
 const MessageStatusIcon = ({ status }: { status: string }) => {

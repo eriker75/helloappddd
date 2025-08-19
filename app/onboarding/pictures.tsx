@@ -11,11 +11,11 @@ import { Alert, Image, TouchableOpacity, View } from "react-native";
 
 const AddYourPicturesScreen = () => {
   // Obtener propiedades del estado
-  const mainPicture = useOnboardingStore((state) => state.mainPicture);
+  const avatar = useOnboardingStore((state) => state.avatar);
   const secondaryImages = useOnboardingStore((state) => state.secondaryImages);
 
   // Obtener acciones del store
-  const setMainPicture = useOnboardingStore((state) => state.setMainPicture);
+  const setAvatar = useOnboardingStore((state) => state.setAvatar);
   const addSecondaryImage = useOnboardingStore(
     (state) => state.addSecondaryImage
   );
@@ -99,7 +99,7 @@ const AddYourPicturesScreen = () => {
       const newPhotoUri = result.assets[0].uri;
 
       if (isMainPhoto) {
-        setMainPicture(newPhotoUri);
+        setAvatar(newPhotoUri);
       } else {
         if (photoIndex !== undefined) {
           // Reemplazar foto existente
@@ -124,17 +124,17 @@ const AddYourPicturesScreen = () => {
   useEffect(() => {
     const checkValidation = async () => {
       const isValid = await validateOnboardingStep(3, {
-        mainPicture,
+        avatar,
         secondaryImages,
       });
       setIsValidStep(isValid);
     };
     checkValidation();
-  }, [mainPicture, secondaryImages]);
+  }, [avatar, secondaryImages]);
 
   const handleContinue = async () => {
     const isValid = await validateOnboardingStep(3, {
-      mainPicture,
+      avatar,
       secondaryImages,
     });
     if (isValid) {
@@ -183,9 +183,9 @@ const AddYourPicturesScreen = () => {
                 shadowRadius: 4,
               }}
             >
-              {mainPicture ? (
+              {avatar ? (
                 <Image
-                  source={{ uri: mainPicture }}
+                  source={{ uri: avatar }}
                   className="w-full h-full rounded-full"
                 />
               ) : (

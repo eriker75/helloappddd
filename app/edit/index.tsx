@@ -260,7 +260,7 @@ const EditProfileScreen = () => {
       );
     }
     // Only run on mutation state change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [updateProfileMutation.isSuccess, updateProfileMutation.isError]);
 
   console.log(JSON.stringify(profile, null, 2));

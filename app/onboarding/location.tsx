@@ -1,6 +1,6 @@
 import { OnboardingScreenLayout } from "@/components/layouts/OnboardingScreenLayout";
 import { LocationPermissionStatuses } from "@/src/definitions/enums/LocationPermissionStatuses.enum";
-import { useOnboardUserService } from "@/src/presentation/services/OnboardingService";
+import { useOnboardMyUserService } from "@/src/presentation/services/UserProfileService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import { useOnboardingStore } from "@/src/presentation/stores/onboarding.store";
 import { requestLocationPermission } from "@/src/utils/location";
@@ -18,9 +18,7 @@ const AllowLocationScreen = () => {
   const setLatitude = useOnboardingStore((s) => s.setLatitude);
   const setLongitude = useOnboardingStore((s) => s.setLongitude);
   const userId = useAuthUserProfileStore((s: any) => s.userId || s.id || "");
-  const userEmail = useAuthUserProfileStore((s: any) => s.email || "");
-  const { mutate, isPending, isSuccess, isError, error } =
-    useOnboardUserService();
+  const { mutate, isPending, isSuccess, isError, error } = useOnboardMyUserService();
 
   useEffect(() => {
     if (isSuccess) {
@@ -29,10 +27,7 @@ const AllowLocationScreen = () => {
     if (isError) {
       // Log the error for debugging
       console.error("Onboarding mutation error:", error);
-      Alert.alert(
-        "Error",
-        "Ocurrió un problema al guardar tu perfil. Por favor intenta nuevamente."
-      );
+      Alert.alert("Error", "Ocurrió un problema al guardar tu perfil. Por favor intenta nuevamente.");
     }
   }, [isSuccess, isError, error]);
 
@@ -41,10 +36,7 @@ const AllowLocationScreen = () => {
       // 1. Solicitar permisos de ubicación
       const permissionStatus = await requestLocationPermission();
       if (permissionStatus !== LocationPermissionStatuses.GRANTED) {
-        Alert.alert(
-          "Permisos requeridos",
-          "Debes habilitar los permisos de ubicación para continuar"
-        );
+        Alert.alert("Permisos requeridos", "Debes habilitar los permisos de ubicación para continuar");
         return;
       }
 
@@ -56,16 +48,14 @@ const AllowLocationScreen = () => {
       setLongitude(longitude.toString());
 
       // 3. Subir imágenes a S3 y obtener URLs firmadas
-      let mainPictureUrl = onboardingStore.mainPicture;
+      let avatarUrl = onboardingStore.avatar;
       const randomString = () => Math.random().toString(36).slice(2, 8);
-      if (mainPictureUrl && !mainPictureUrl.startsWith("https://")) {
+      if (avatarUrl && !avatarUrl.startsWith("https://")) {
         // Asumimos que es un URI local, subir a S3
-        const mainPicBuffer = await fetch(mainPictureUrl).then((res) =>
-          res.arrayBuffer()
-        );
+        const mainPicBuffer = await fetch(avatarUrl).then((res) => res.arrayBuffer());
         const mainPicKey = `profiles/${userId}/${Date.now()}-${randomString()}-main.jpg`;
         await uploadFile(mainPicBuffer, mainPicKey, "image/jpeg");
-        mainPictureUrl = await getSignedUrlForKey(mainPicKey, 24 * 3600);
+        avatarUrl = await getSignedUrlForKey(mainPicKey, 24 * 3600);
       }
 
       const secondaryImagesUrls: string[] = [];
@@ -82,7 +72,7 @@ const AllowLocationScreen = () => {
       }
 
       // 4. Actualizar el store con las URLs de S3
-      onboardingStore.setMainPicture(mainPictureUrl);
+      onboardingStore.setAvatar(avatarUrl);
       onboardingStore.setSecondaryImages(secondaryImagesUrls);
 
       console.log(JSON.stringify(onboardingStore, null, 2));
@@ -101,10 +91,7 @@ const AllowLocationScreen = () => {
         if (!latestStore.latitude || !latestStore.longitude) missingFields.push("ubicación");
 
         if (missingFields.length > 0) {
-          Alert.alert(
-            "Error",
-            `Faltan datos requeridos para completar el perfil: ${missingFields.join(", ")}.`
-          );
+          Alert.alert("Error", `Faltan datos requeridos para completar el perfil: ${missingFields.join(", ")}.`);
           return;
         }
 
@@ -126,7 +113,7 @@ const AllowLocationScreen = () => {
           maxAgePreference: latestStore.maxAgePreference,
           latitude: latestStore.latitude,
           longitude: latestStore.longitude,
-          avatar: mainPictureUrl,
+          avatar: avatarUrl,
           secondary_images: secondaryImagesUrls,
           address: "Ubicación actual",
           is_onboarded: true,
@@ -154,12 +141,10 @@ const AllowLocationScreen = () => {
       onFooterButtonPress={selectMyCurrentLocationAndContinue}
     >
       <View className="flex-1 pb-10 gap-10 items-center">
-        <Text className="font-poppins font-bold text-3xl text-center">
-          Necesitamos tu ubicación
-        </Text>
+        <Text className="font-poppins font-bold text-3xl text-center">Necesitamos tu ubicación</Text>
         <Text className="font-poppins font-normal text-xl text-center">
-          Queremos mostrarte gente real, cerca de ti.{"\n"}Para eso es
-          importante tu ubicación, tu privacidad está segura
+          Queremos mostrarte gente real, cerca de ti.{"\n"}Para eso es importante tu ubicación, tu privacidad está
+          segura
         </Text>
         <Image
           source={LocationImg}

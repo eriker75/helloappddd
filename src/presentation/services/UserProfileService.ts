@@ -179,7 +179,7 @@ export function useSetMyUserAsOffline() {
   };
 }
 
-export function useOnboardMyUser() {
+export function useOnboardMyUserService() {
   const setProfile = useAuthUserProfileStore((s) => s.setProfile);
   const resetOnboarding = useOnboardingStore((s) => s.reset);
   const mutation = useOnboardUser();
