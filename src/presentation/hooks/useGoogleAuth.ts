@@ -109,6 +109,8 @@ export const useGoogleAuth = () => {
       setIsLoading(false);
 
       if (isErrorWithCode(error)) {
+        console.log(error);
+
         switch (error.code) {
           case statusCodes.SIGN_IN_CANCELLED:
             setError("Inicio de sesión cancelado");

@@ -109,14 +109,6 @@ export default function RootLayout() {
                   animation: "fade",
                 }}
               />
-              <Stack.Screen
-                name="queries"
-                options={{
-                  title: "Testing Supabase Queries",
-                  headerShown: false,
-                  headerBackTitle: "Back",
-                }}
-              />
             </Stack>
             <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
           </ThemeProvider>
