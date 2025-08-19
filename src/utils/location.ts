@@ -62,6 +62,7 @@ export const getCurrentLocation = async (): Promise<{ latitude: number; longitud
   if (!location?.coords) {
     throw new Error("Unable to obtain location");
   }
+  console.log(JSON.stringify(location, null, 2))
   return {
     latitude: location.coords.latitude,
     longitude: location.coords.longitude,

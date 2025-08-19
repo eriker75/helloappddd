@@ -1,5 +1,6 @@
 import { Avatar, AvatarBadge, AvatarImage } from "@/components/ui";
 import { Text } from "@/components/ui/text";
+import { useGoogleAuth } from "@/src/presentation/hooks/useGoogleAuth";
 import { useGetCurrentUserProfileByUserId } from "@/src/presentation/services/UserProfileService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import { useRouter } from "expo-router";
@@ -28,15 +29,15 @@ export default function ProfileScreen() {
   const [signedAvatar, setSignedAvatar] = useState<string | null>(null);
   const [signing, setSigning] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
-
+  const {logout, isLoading: isLoadingAuth, error: authError} = useGoogleAuth();
   const router = useRouter();
   const avatar = useAuthUserProfileStore((s) => s.avatar);
   const secondaryImages = useAuthUserProfileStore((s) => s.secondaryImages);
   const userProfile = useAuthUserProfileStore();
 
-  // Log raw userProfile from store (cyan)
+  console.log(authError);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (typeof window !== "undefined") {
       console.log(
         "\x1b[36m[ProfileScreen] Raw userProfile from store:\n" +
@@ -246,10 +247,20 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
           <Text style={styles.genderText}>
-            {userProfile.gender === 1 ? "Hombre" : "Mujer"}
-            {userProfile.gederInterests && userProfile.gederInterests.length > 0
-              ? `, busca ${userProfile.gederInterests.join(", ")}`
-              : ""}
+            {(() => {
+              const gender = userProfile.gender === 1 ? "Hombre" : "Mujer";
+              const interestPrefix = userProfile.gender === 1 ? "interesado en" : "interesada en";
+              const interestsRaw = Array.isArray(userProfile.gederInterests) ? userProfile.gederInterests : [];
+              // Normalize to numbers
+              const interests = interestsRaw.map((v) => Number(v)).filter((v) => v === 1 || v === 2);
+              let interestText = "";
+              if (interests.length === 1) {
+                interestText = interests[0] === 1 ? "Hombres" : "Mujeres";
+              } else if (interests.includes(1) && interests.includes(2)) {
+                interestText = "Hombres y Mujeres";
+              }
+              return `${gender}${interestText ? `, ${interestPrefix} ${interestText}` : ""}`;
+            })()}
           </Text>
           <Text style={styles.descriptionText}>
             {userProfile.biography
@@ -260,8 +271,16 @@ export default function ProfileScreen() {
       </ScrollView>
       {/* Bottom button */}
       <View style={styles.bottomButtonContainer}>
-        <TouchableOpacity style={styles.bottomButton}>
-          <Text style={styles.bottomButtonText}>¡Hola, {userProfile.alias || userProfile.name || "Usuario"}! 👋</Text>
+        <TouchableOpacity
+          style={[
+            styles.logoutButton,
+            isLoadingAuth && { opacity: 0.6 }
+          ]}
+          onPress={logout}
+          disabled={isLoadingAuth}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.logoutButtonText}>Cerrar sesión</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -439,5 +458,28 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 8,
     fontFamily: "Poppins-Medium",
+  },
+  logoutButton: {
+    backgroundColor: "#80E1FF", // lighter variant of #00BFFF
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 18, // taller
+    paddingHorizontal: 18,
+    maxWidth: 220, // narrower
+    width: "70%",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    marginTop: 8,
+  },
+  logoutButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    fontFamily: "Roboto",
+    letterSpacing: 0.5,
   },
 });

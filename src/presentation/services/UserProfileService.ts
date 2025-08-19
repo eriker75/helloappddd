@@ -48,13 +48,15 @@ export function useLoadSwipeableProfiles(maxDistance: number) {
   const appendNearbySwipeableProfiles = useNearbySwipeableProfilesStore((s) => s.appendProfiles);
 
   // Fetch 5 if empty, otherwise 5 if low, otherwise 1 (to keep react-query happy)
-  const shouldPrefetch = nearbySwipeableProfilesInStore.length > 0 && nearbySwipeableProfilesInStore.length <= LOW_QUEUE_THRESHOLD;
+  const shouldPrefetch =
+    nearbySwipeableProfilesInStore.length > 0 && nearbySwipeableProfilesInStore.length <= LOW_QUEUE_THRESHOLD;
   const fetchLimit = nearbySwipeableProfilesInStore.length === 0 || shouldPrefetch ? 5 : 1;
 
-  const { data: swipeableProfilesRequested, isLoading, isFetching, ...rest } = useListNearbySwipeableProfiles(
-    maxDistance,
-    fetchLimit
-  );
+  const {
+    data: swipeableProfilesRequested,
+    isLoading,
+    isFetching,
+  } = useListNearbySwipeableProfiles(maxDistance, fetchLimit);
 
   useEffect(() => {
     if (!isLoading && !isFetching && swipeableProfilesRequested) {
@@ -150,6 +152,7 @@ export function useUpdateMyUserCurrentLocation() {
         { latitude, longitude },
         {
           onSuccess: () => {
+            console.log("MyCurrentLocation", JSON.stringify({ latitude, longitude }));
             setProfile({ latitude, longitude });
           },
         }
@@ -229,7 +232,10 @@ export function useOnboardMyUserService() {
         setTimeout(() => {
           // If using Zustand, getState is available directly on the hook
           if (useAuthUserProfileStore.getState) {
-            console.log("[ONBOARDING] Store after setProfile:", JSON.stringify(useAuthUserProfileStore.getState(), null, 2));
+            console.log(
+              "[ONBOARDING] Store after setProfile:",
+              JSON.stringify(useAuthUserProfileStore.getState(), null, 2)
+            );
           }
         }, 200);
         resetOnboarding();
