@@ -6,7 +6,7 @@ export abstract class AbastractChatDatasoruce {
   abstract findMyChatById(id: string): Promise<Chat | null>;
   abstract findMyChats(page: number, perPage: number): Promise<PaginatedChats>;
   abstract createChat(chat: Partial<Chat>): Promise<boolean>;
-  abstract updateChat(chat: Partial<Chat>): Promise<boolean>;
+  abstract updateChat(chatId: string, chat: Partial<Chat>): Promise<boolean>;
   abstract deleteChat(id: string): Promise<boolean>;
   // Messages
   abstract getAllMyChatMessages(chatId: string, page: number, perPage: number): Promise<PaginatedMessages>;

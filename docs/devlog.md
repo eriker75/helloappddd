@@ -48,3 +48,10 @@
 - Fixed a "Maximum update depth exceeded" error when entering the chat view, caused by an auto-scroll effect depending on the entire messages array reference.
 - Updated the effect in `app/dashboard/chats/[chatId]/index.tsx` to depend only on the messages length, preventing unnecessary re-renders and infinite loops.
 - See [2025-08-19-fix-infinite-update-chat-screen.md](2025-08-19-fix-infinite-update-chat-screen.md) for full details and rationale.
+
+## 2025-08-24 - Fix Infinite Update Loop in Chat List Screen
+
+- Resolved a "Maximum update depth exceeded" error in the chat list screen (`app/dashboard/chats/index.tsx`) caused by an infinite React state update loop.
+- The bug was due to the effect in `useGetChatsService` retriggering itself when the store was updated (see `src/presentation/services/ChatService.ts`).
+- The fix introduces a `useRef`-based guard to initialize chats only once per session, breaking the cycle.
+- See [2025-08-24-fix-infinite-loop-chat-list.md](2025-08-24-fix-infinite-loop-chat-list.md) for details and solution rationale.

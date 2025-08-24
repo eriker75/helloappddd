@@ -8,7 +8,7 @@ import {
   useMarkAllMessagesFromChatAsRead as useRepoMarkAllMessagesFromChatAsRead,
   useSendMessageToChat,
 } from "@/src/infraestructure/repositories/ChatRepositoryImpl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChatListStore } from "../stores/chat-list.store";
 import { useCurrentChatMessagesStore } from "../stores/current-chat-messages.store";
 
@@ -18,10 +18,19 @@ import { useCurrentChatMessagesStore } from "../stores/current-chat-messages.sto
 export function useGetChatsService(page: number = 1, perPage: number = 20) {
   const { data: myFetchedChats, isLoading, isError } = useFindMyChats(page, perPage);
   const setChats = useChatListStore((s) => s.setChats);
+  const chats = useChatListStore((s) => s.chats);
   const total = useChatListStore((s) => s.total);
 
+  // Use ref to track if we've already initialized the chat list for this screen session
+  const hasInitialized = useRef(false);
+
   useEffect(() => {
-    if (myFetchedChats && Array.isArray(myFetchedChats.chats) && total === 0) {
+    if (
+      myFetchedChats &&
+      Array.isArray(myFetchedChats.chats) &&
+      !hasInitialized.current &&
+      Object.keys(chats).length === 0
+    ) {
       setChats(
         myFetchedChats.chats,
         myFetchedChats.page,
@@ -29,11 +38,23 @@ export function useGetChatsService(page: number = 1, perPage: number = 20) {
         myFetchedChats.total,
         myFetchedChats.hasMore
       );
+      hasInitialized.current = true;
     }
-  }, [myFetchedChats, setChats, total]);
+  }, [myFetchedChats, setChats, chats]);
+
+  // Get the chats object from the store and memoize sorted chats
+  const chatsObject = useChatListStore((s) => s.chats);
+
+  const sortedChats = useMemo(() => {
+    const chatsArr = Object.values(chatsObject);
+    // Optional: sort in descending order by last message time, null-failsafe
+    return chatsArr.sort((a, b) =>
+      new Date(b.lastMessageCreatedAt || 0).getTime() - new Date(a.lastMessageCreatedAt || 0).getTime()
+    );
+  }, [chatsObject]);
 
   return {
-    chats: useChatListStore((s) => s.getSortedChats()),
+    chats: sortedChats,
     isLoading,
     isError,
     total,

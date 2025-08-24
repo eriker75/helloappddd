@@ -39,9 +39,9 @@ export class ChatDatasourceImpl implements AbastractChatDatasoruce {
     return await this.controller.createChat(chatRequestData);
   }
 
-  async updateChat(chat: Partial<Chat>): Promise<boolean> {
-    const updataChatData = mapPartialChatToUpdateChatRequestData(chat);
-    return await this.controller.updateChat(updataChatData);
+  async updateChat(chatId: string, chat: Partial<Chat>): Promise<boolean> {
+    const updateChatData = mapPartialChatToUpdateChatRequestData(chat);
+    return await this.controller.updateChat(chatId, updateChatData);
   }
 
   async deleteChat(id: string): Promise<boolean> {

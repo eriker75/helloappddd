@@ -92,7 +92,7 @@ export function useCreateChat(): UseMutationResult<boolean, unknown, Chat> {
 export function useUpdateChat(): UseMutationResult<boolean, unknown, Chat> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (chat: Chat) => datasource.updateChat(chat),
+    mutationFn: (chat: Chat) => datasource.updateChat(chat.chatId, chat),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chat"] });
     },
