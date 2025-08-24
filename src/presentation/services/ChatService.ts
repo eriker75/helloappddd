@@ -147,8 +147,17 @@ export function useGetChatMessagesService(chatId: string, page: number = 1, perP
     }
   }, [fetchedMessages, setInitialMessages, total]);
 
+  // Get the messages object from the store and memoize ordered messages
+  const messagesObject = useCurrentChatMessagesStore((s) => s.messages);
+
+  const orderedMessages = useMemo(() => {
+    return Object.values(messagesObject).sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [messagesObject]);
+
   return {
-    messages: useCurrentChatMessagesStore((s) => s.getOrderedMessages()),
+    messages: orderedMessages,
     isLoading,
     isError,
     total,
