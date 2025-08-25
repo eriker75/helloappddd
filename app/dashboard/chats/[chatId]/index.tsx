@@ -2,6 +2,7 @@ import { Box, HStack, Pressable, Text, VStack } from "@/components/ui";
 import { Textarea, TextareaInput } from "@/components/ui/textarea";
 import type { Message } from "@/src/domain/entities/Message";
 import { useGetChatMessagesService, useSendMessageToChatService } from "@/src/presentation/services/ChatService";
+import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import { useCurrentChatMessagesStore } from "@/src/presentation/stores/current-chat-messages.store";
 import formatMessageTime from "@/src/utils/formatMessageTime";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -127,6 +128,9 @@ const ChatScreen = () => {
   const flatListRef = useRef<FlatList>(null);
   const { chatId } = useLocalSearchParams<{ chatId: string }>();
 
+  // Current authenticated userId for my/other bubble
+  const myUserId = useAuthUserProfileStore((s) => s.userId);
+
   // Use service hook for fetching and syncing messages
   // Use a selector that returns a stable array reference
   // FIX 1: Use stable selectors and memoized messages array
@@ -190,7 +194,7 @@ const ChatScreen = () => {
           {index === 0 && <DateSeparator label="Hoy" />}
           <ChatBubble
             text={item.content || ""}
-            fromMe={false}
+            fromMe={item.senderId === myUserId}
             time={
               item.createdAt instanceof Date
                 ? item.createdAt.toISOString()
@@ -201,7 +205,7 @@ const ChatScreen = () => {
           />
         </Box>
       ) : null,
-    []
+    [myUserId]
   );
 
   console.log(JSON.stringify(storeMessages, null, 2));
