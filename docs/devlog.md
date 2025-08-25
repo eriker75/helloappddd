@@ -1,57 +1,10 @@
-## 2025-08-19 - Add Unilateral Distance Selector to Onboarding
+## 2025-08-25 - Fix Infinite Update Loop in Chat Messages Screen
 
-- Implemented a unilateral (single-thumb) slider in the onboarding form to let users select the search radius for nearby people, from 10km to 1010km (with 1010km labeled as "infinito").
-- The slider uses the Gluestack UI component and matches the application's style.
-- The selected value is stored in the onboarding store (`maxDistancePreference`) and is used for user search preferences.
-- Updated files: [`app/onboarding/basicinfo.tsx`](app/onboarding/basicinfo.tsx), [`docs/2025-08-19-onboarding-distance-slider.md`](2025-08-19-onboarding-distance-slider.md)
-- See [2025-08-19-onboarding-distance-slider.md](2025-08-19-onboarding-distance-slider.md) for full details and rationale.
-
-## 2025-08-19 - Enforce Default Avatar Fallback Globally
-
-- Updated the main avatar component ([`components/ui/avatar/index.tsx`](components/ui/avatar/index.tsx)) to ensure that if a user's avatar is missing or fails to load, the default image `assets/images/avatar-placeholder.png` is always shown.
-- The fallback logic is now centralized and robust, using a helper to detect missing/invalid sources and an `onError` handler for load failures.
-- Searched the codebase to confirm all avatar rendering uses this component, ensuring global consistency.
-- No direct usage of the `Image` component for avatars was found in screens; all avatar displays now benefit from this fallback.
-- This change improves user experience and visual consistency across the app.
-
-## 2025-08-19 - Fix "public.users does not exist" Error on Profile Fetch
-
-- Documented and resolved the error caused by missing `public.users` table when fetching user profiles.
-- Added instructions and SQL to create a `public.users` view exposing fields from `auth.users` for Supabase compatibility.
-- No code changes required; fix is a database migration.
-- See [2025-08-19-fix-public-users-view.md](2025-08-19-fix-public-users-view.md) for full details and rationale.
-
-## 2025-08-19 - Fix Swipe Queue Prefetch to Prevent "No Profiles" Flash
-
-- Implemented prefetch and append logic for the swipeable profiles queue to avoid the "no profiles available" flash after several swipes.
-- Added `appendProfiles` to the swipeable profiles store and updated the service to prefetch when the queue is low.
-- User experience is now seamless and circular as intended.
-- See [2025-08-19-fix-swipe-queue-prefetch.md](2025-08-19-fix-swipe-queue-prefetch.md) for full details and rationale.
-
-## 2025-08-19 - Refactor Chat List Screen to Use Store/Service Layer
-
-- Refactored `app/dashboard/chats/index.tsx` to remove all incorrect or direct repository usage and leverage the presentation layer's store and service for chat lists.
-- Now uses `useGetChatsService` for fetching and syncing the chat list, and the store for all chat list state and rendering.
-- All chat list logic is handled via the service/store, ensuring reactivity and proper separation of concerns.
-- Improved code clarity, maintainability, and adherence to project architecture.
-- See [2025-08-19-refactor-chat-list-screen-use-store-service.md](2025-08-19-refactor-chat-list-screen-use-store-service.md) for full details and rationale.
-
-## 2025-08-19 - Fix User Location Update Flow
-
-- Fixed an issue where user latitude and longitude were undefined when updating the profile, causing errors in the radar feature.
-- Refactored `useUpdateMyUserCurrentLocation` to internally obtain the device's location using a new utility, and to synchronize the update with the user profile store and backend.
-- Updated all usages to use the new `updateLocation()` method.
-- See [2025-08-19-fix-location-update-flow.md](2025-08-19-fix-location-update-flow.md) for full details and rationale.
-
-## 2025-08-19 - Fix Infinite Update Loop in Chat Screen
-
-- Fixed a "Maximum update depth exceeded" error when entering the chat view, caused by an auto-scroll effect depending on the entire messages array reference.
-- Updated the effect in `app/dashboard/chats/[chatId]/index.tsx` to depend only on the messages length, preventing unnecessary re-renders and infinite loops.
-- See [2025-08-19-fix-infinite-update-chat-screen.md](2025-08-19-fix-infinite-update-chat-screen.md) for full details and rationale.
-
-## 2025-08-24 - Fix Infinite Update Loop in Chat List Screen
-
-- Resolved a "Maximum update depth exceeded" error in the chat list screen (`app/dashboard/chats/index.tsx`) caused by an infinite React state update loop.
-- The bug was due to the effect in `useGetChatsService` retriggering itself when the store was updated (see `src/presentation/services/ChatService.ts`).
-- The fix introduces a `useRef`-based guard to initialize chats only once per session, breaking the cycle.
-- See [2025-08-24-fix-infinite-loop-chat-list.md](2025-08-24-fix-infinite-loop-chat-list.md) for details and solution rationale.
+- Fixed a "Maximum update depth exceeded" error in the individual chat messages view at [`app/dashboard/chats/[chatId]/index.tsx`](app/dashboard/chats/[chatId]/index.tsx).
+- Root cause: An unstable selector against the Zustand store was used (`useCurrentChatMessagesStore(s => s.orderedMessageIds.map(id => s.messages[id]))`), which produced a new array each render and created an infinite re-render loop. The service effect in [`src/presentation/services/ChatService.ts`](src/presentation/services/ChatService.ts) also aggressively re-initialized the message list without proper guards.
+- Solution:
+  - Refactored `app/dashboard/chats/[chatId]/index.tsx` to use stable selectors for messages and message IDs, `useMemo` for array derivation, and memoized handlers for FlatList.
+  - Updated `useGetChatMessagesService` in `src/presentation/services/ChatService.ts` to initialize messages only once per chat change, using `useRef` guards and a chatId-tracking reset effect.
+  - Fixed TypeScript errors and ensured proper string conversion for `createdAt` in message display.
+- Result: No more infinite rendering, error gone, correct message initialization, and improved performance/user experience.
+- See [2025-08-25-fix-infinite-render-in-chat.md](2025-08-25-fix-infinite-render-in-chat.md) for action log and technical rationale.

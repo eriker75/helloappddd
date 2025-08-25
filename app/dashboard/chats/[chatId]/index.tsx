@@ -1,11 +1,12 @@
 import { Box, HStack, Pressable, Text, VStack } from "@/components/ui";
 import { Textarea, TextareaInput } from "@/components/ui/textarea";
+import type { Message } from "@/src/domain/entities/Message";
 import { useGetChatMessagesService, useSendMessageToChatService } from "@/src/presentation/services/ChatService";
 import { useCurrentChatMessagesStore } from "@/src/presentation/stores/current-chat-messages.store";
 import formatMessageTime from "@/src/utils/formatMessageTime";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet } from "react-native";
 
 const ChatHeader = () => (
@@ -128,33 +129,82 @@ const ChatScreen = () => {
 
   // Use service hook for fetching and syncing messages
   // Use a selector that returns a stable array reference
-  const storeMessages = useCurrentChatMessagesStore(
-    (s: any) => s.orderedMessageIds.map((id: string) => s.messages[id])
+  // FIX 1: Use stable selectors and memoized messages array
+  const messagesObject = useCurrentChatMessagesStore((s) => s.messages);
+  const orderedMessageIds = useCurrentChatMessagesStore((s) => s.orderedMessageIds);
+
+  // FIX 2: Memoize storeMessages to avoid unstable array refs
+  const storeMessages = React.useMemo(
+    () => orderedMessageIds.map((id: string) => messagesObject[id]).filter(Boolean),
+    [messagesObject, orderedMessageIds]
   );
+
   const { isLoading, isError } = useGetChatMessagesService(chatId || "");
 
   // Use service hook for sending messages
   const { sendMessage, status } = useSendMessageToChatService(chatId || "");
   const isSending = status === "pending";
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (!storeMessages || storeMessages.length === 0) return;
-    flatListRef.current?.scrollToIndex({ index: 0, animated: true });
-  }, [storeMessages, storeMessages.length]);
+  // FIX 3: Memoize scrollToBottom callback
+  const scrollToBottom = React.useCallback(() => {
+    if (storeMessages.length > 0) {
+      flatListRef.current?.scrollToIndex({ index: 0, animated: true });
+    }
+  }, [storeMessages.length]);
+
+  // FIX 4: Auto-scroll effect with small delay
+  const messagesLength = storeMessages.length;
+  React.useEffect(() => {
+    if (messagesLength > 0) {
+      const timeoutId = setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [messagesLength, scrollToBottom]);
 
   const [input, setInput] = useState("");
 
-  // Send handler using service
-  const handleSend = () => {
-    if (!input.trim()) return;
+  // FIX 5: Memoize send handler
+  const handleSend = React.useCallback(() => {
+    if (!input.trim() || isSending) return;
     sendMessage({
       content: input.trim(),
       createdAt: new Date(),
-      // Add other required fields as needed
+      messageId: `temp-${Date.now()}`,
+      status: "sending",
     });
     setInput("");
-  };
+  }, [input, isSending, sendMessage]);
+
+  // FIX: Memoized FlatList item/keys to comply with hooks rules and static typing
+  const keyExtractor = React.useCallback(
+    (item: Message, idx: number) => (item && item.messageId ? String(item.messageId) : `msg-${idx}`),
+    []
+  );
+
+  const renderItem = React.useCallback(
+    ({ item, index }: { item: Message; index: number }) =>
+      item ? (
+        <Box>
+          {index === 0 && <DateSeparator label="Hoy" />}
+          <ChatBubble
+            text={item.content || ""}
+            fromMe={false}
+            time={
+              item.createdAt instanceof Date
+                ? item.createdAt.toISOString()
+                : typeof item.createdAt === "string"
+                ? item.createdAt
+                : String(item.createdAt)
+            }
+          />
+        </Box>
+      ) : null,
+    []
+  );
+
+  console.log(JSON.stringify(storeMessages, null, 2));
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -189,16 +239,15 @@ const ChatScreen = () => {
             <FlatList
               ref={flatListRef}
               data={storeMessages}
-              keyExtractor={(item, idx) => item?.messageId ? String(item.messageId) : `msg-${idx}`}
-              renderItem={({ item, index }) => (
-                <Box>
-                  {index === 0 && <DateSeparator label="Hoy" />}
-                  <ChatBubble text={item.content || ""} fromMe={false} time={item.createdAt} />
-                </Box>
-              )}
+              keyExtractor={keyExtractor}
+              renderItem={renderItem}
               contentContainerStyle={styles.messagesContainer}
               showsVerticalScrollIndicator={false}
               inverted={true}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={10}
+              windowSize={10}
+              initialNumToRender={20}
             />
           )}
           <ChatInputBar value={input} onChangeText={setInput} onSend={handleSend} sending={isSending} />

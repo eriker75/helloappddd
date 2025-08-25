@@ -132,11 +132,29 @@ export function useCreateChatService() {
 export function useGetChatMessagesService(chatId: string, page: number = 1, perPage: number = 20) {
   const { data: fetchedMessages, isLoading, isError } = useGetMyChatMessages(chatId, page, perPage);
   const setInitialMessages = useCurrentChatMessagesStore((s) => s.setInitialMessages);
+  const currentChatId = useCurrentChatMessagesStore((s) => s.chatId);
   const total = useCurrentChatMessagesStore((s) => s.total);
 
-  // Sync fetched messages to store only if store is empty
+  // FIX: Use ref to avoid re-initializations
+  const hasInitialized = useRef(false);
+  const lastChatId = useRef<string>("");
+
+  // Reset when chatId changes
   useEffect(() => {
-    if (fetchedMessages && Array.isArray(fetchedMessages.messages) && total === 0) {
+    if (chatId !== lastChatId.current) {
+      hasInitialized.current = false;
+      lastChatId.current = chatId;
+    }
+  }, [chatId]);
+
+  // Only sync initial messages once per chat and when store is empty or different chat
+  useEffect(() => {
+    if (
+      fetchedMessages &&
+      Array.isArray(fetchedMessages.messages) &&
+      !hasInitialized.current &&
+      (total === 0 || currentChatId !== chatId)
+    ) {
       setInitialMessages(
         fetchedMessages.messages,
         fetchedMessages.page,
@@ -144,20 +162,11 @@ export function useGetChatMessagesService(chatId: string, page: number = 1, perP
         fetchedMessages.total,
         fetchedMessages.hasMore
       );
+      hasInitialized.current = true;
     }
-  }, [fetchedMessages, setInitialMessages, total]);
-
-  // Get the messages object from the store and memoize ordered messages
-  const messagesObject = useCurrentChatMessagesStore((s) => s.messages);
-
-  const orderedMessages = useMemo(() => {
-    return Object.values(messagesObject).sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
-  }, [messagesObject]);
+  }, [fetchedMessages, setInitialMessages, total, currentChatId, chatId]);
 
   return {
-    messages: orderedMessages,
     isLoading,
     isError,
     total,
