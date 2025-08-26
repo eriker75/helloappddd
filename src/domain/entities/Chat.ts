@@ -7,6 +7,7 @@ export interface Chat {
   image: string;
   description: string;
   type: ChatType;
+  creatorId: string;
   lastMessageContent: string;
   lastMessageId: string;
   lastMessageStatus: LastMessageStatus;

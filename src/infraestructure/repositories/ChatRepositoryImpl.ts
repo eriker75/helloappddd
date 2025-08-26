@@ -79,10 +79,10 @@ export function useGetMyChatMessages(chatId: string, page: number, perPage: numb
 }
 
 // Mutations
-export function useCreateChat(): UseMutationResult<boolean, unknown, Chat> {
+export function useCreateChat(): UseMutationResult<boolean, unknown, Partial<Chat>> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (chat: Chat) => datasource.createChat(chat),
+    mutationFn: (chat: Partial<Chat>) => datasource.createChat(chat),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chat"] });
     },

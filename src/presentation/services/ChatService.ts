@@ -1,3 +1,4 @@
+import { Chat } from "@/src/domain/entities/Chat";
 import { Message } from "@/src/domain/entities/Message";
 import {
   fetchMyChatMessages,
@@ -8,6 +9,7 @@ import {
   useMarkAllMessagesFromChatAsRead as useRepoMarkAllMessagesFromChatAsRead,
   useSendMessageToChat,
 } from "@/src/infraestructure/repositories/ChatRepositoryImpl";
+import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChatListStore } from "../stores/chat-list.store";
 import { useCurrentChatMessagesStore } from "../stores/current-chat-messages.store";
@@ -17,7 +19,7 @@ import { useCurrentChatMessagesStore } from "../stores/current-chat-messages.sto
  */
 export function useGetChatsService(page: number = 1, perPage: number = 20) {
   const { data: myFetchedChats, isLoading, isError } = useFindMyChats(page, perPage);
-  console.log(JSON.stringify(myFetchedChats,null,2));
+  console.log(JSON.stringify(myFetchedChats, null, 2));
   const setChats = useChatListStore((s) => s.setChats);
   const chats = useChatListStore((s) => s.chats);
   const total = useChatListStore((s) => s.total);
@@ -49,8 +51,8 @@ export function useGetChatsService(page: number = 1, perPage: number = 20) {
   const sortedChats = useMemo(() => {
     const chatsArr = Object.values(chatsObject);
     // Optional: sort in descending order by last message time, null-failsafe
-    return chatsArr.sort((a, b) =>
-      new Date(b.lastMessageCreatedAt || 0).getTime() - new Date(a.lastMessageCreatedAt || 0).getTime()
+    return chatsArr.sort(
+      (a, b) => new Date(b.lastMessageCreatedAt || 0).getTime() - new Date(a.lastMessageCreatedAt || 0).getTime()
     );
   }, [chatsObject]);
 
@@ -102,11 +104,13 @@ export function useGetMoreChatsService() {
 export function useCreateChatService() {
   const addChat = useChatListStore((s) => s.addChat);
   const mutation = useCreateChat();
-  const createChat = (chatData: any, onError?: (error: any) => void) => {
+  const createChat = (chatData: Partial<Chat>, onError?: (error: any) => void) => {
     mutation.mutate(chatData, {
       onSuccess: (newChat: any) => {
+        console.log("CREATED CHAT", { newChat });
         if (newChat && newChat.chatId) {
           addChat(newChat);
+          router.push(`/dashboard/chats/${newChat.chatId}`);
         }
       },
       onError: (error: any) => {
