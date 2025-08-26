@@ -1,4 +1,5 @@
 import { Box, HStack, Pressable, Text, VStack } from "@/components/ui";
+import { Image } from "@/components/ui/image";
 import { Textarea, TextareaInput } from "@/components/ui/textarea";
 import type { Message } from "@/src/domain/entities/Message";
 import { useGetChatMessagesService, useSendMessageToChatService } from "@/src/presentation/services/ChatService";
@@ -43,7 +44,17 @@ const DateSeparator = ({ label }: { label: string }) => (
   </Box>
 );
 
-const ChatBubble = ({ text, fromMe, time }: { text: string; fromMe: boolean; time: string }) => (
+const ChatBubble = ({
+  children,
+  text,
+  fromMe,
+  time,
+}: {
+  children?: React.ReactNode;
+  text?: string;
+  fromMe: boolean;
+  time: string;
+}) => (
   <HStack
     space="md"
     style={{
@@ -59,7 +70,11 @@ const ChatBubble = ({ text, fromMe, time }: { text: string; fromMe: boolean; tim
         { alignSelf: fromMe ? "flex-end" : "flex-start" },
       ]}
     >
-      <Text style={fromMe ? styles.bubbleTextMe : styles.bubbleTextOther}>{text}</Text>
+      {children ?? (
+        <>
+          <Text style={fromMe ? styles.bubbleTextMe : styles.bubbleTextOther}>{text}</Text>
+        </>
+      )}
       <Text
         style={{
           fontSize: 11,
@@ -192,17 +207,48 @@ const ChatScreen = () => {
       item ? (
         <Box>
           {index === 0 && <DateSeparator label="Hoy" />}
-          <ChatBubble
-            text={item.content || ""}
-            fromMe={item.senderId === myUserId}
-            time={
-              item.createdAt instanceof Date
-                ? item.createdAt.toISOString()
-                : typeof item.createdAt === "string"
-                ? item.createdAt
-                : String(item.createdAt)
-            }
-          />
+          {item.type === "image" ? (
+            <ChatBubble
+              fromMe={item.senderId === myUserId}
+              time={
+                item.createdAt instanceof Date
+                  ? item.createdAt.toISOString()
+                  : typeof item.createdAt === "string"
+                  ? item.createdAt
+                  : String(item.createdAt)
+              }
+            >
+              {item.content ? (
+                <Image
+                  source={{ uri: item.content }}
+                  size="md"
+                  style={{
+                    borderRadius: 12,
+                    maxWidth: 240,
+                    maxHeight: 240,
+                    aspectRatio: 1,
+                    backgroundColor: "#d3eaf5",
+                  }}
+                  resizeMode="cover"
+                  alt="Imagen enviada"
+                />
+              ) : (
+                <Text style={{ color: '#f00', fontStyle: 'italic' }}>Imagen no disponible</Text>
+              )}
+            </ChatBubble>
+          ) : (
+            <ChatBubble
+              text={item.content || ""}
+              fromMe={item.senderId === myUserId}
+              time={
+                item.createdAt instanceof Date
+                  ? item.createdAt.toISOString()
+                  : typeof item.createdAt === "string"
+                  ? item.createdAt
+                  : String(item.createdAt)
+              }
+            />
+          )}
         </Box>
       ) : null,
     [myUserId]

@@ -1,3 +1,10 @@
+## 2025-08-26 - Support Visual Display of Image Messages in Chat
+
+- Added conditional rendering for messages of type `image` in the chat view ([`app/dashboard/chats/[chatId]/index.tsx`]), using the custom UI Image component for visual display.
+- The change allows users to see image content directly in chat bubbles, styled and aligned with the existing UI, with text fallback for missing images.
+- Core message logic, store, and networking were unchanged.
+- See [2025-08-26-chat-image-message-support.md](2025-08-26-chat-image-message-support.md) for implementation details and design notes.
+
 ## 2025-08-25 - Fix Infinite Update Loop in Chat Messages Screen
 
 - Fixed a "Maximum update depth exceeded" error in the individual chat messages view at [`app/dashboard/chats/[chatId]/index.tsx`](app/dashboard/chats/[chatId]/index.tsx).
