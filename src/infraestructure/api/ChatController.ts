@@ -95,8 +95,87 @@ export class ChatController {
       throw new Error("Error fetching chats: " + error.message);
     }
 
+    // For each chat, enrich with participants, unreadedCount, last_message, other_user_profile
+    const enrichedChats: ChatResponse[] = await Promise.all(
+      (chats ?? []).map(async (chat: any) => {
+        // Fetch participants
+        const { data: participantsRows, error: participantsError } = await supabase
+          .from("participants")
+          .select("user_id")
+          .eq("chat_id", chat.id);
+
+        if (participantsError) {
+          throw new Error("Error fetching chat participants: " + participantsError.message);
+        }
+
+        const participants = (participantsRows ?? []).map((row: any) => row.user_id);
+
+        // Count unread messages for current user (from other users)
+        const { count: unreadedCount, error: unreadError } = await supabase
+          .from("messages")
+          .select("*", { count: "exact", head: true })
+          .eq("chat_id", chat.id)
+          .eq("readed", false)
+          .neq("sender_id", user.id);
+
+        if (unreadError) {
+          throw new Error("Error fetching unread message count: " + unreadError.message);
+        }
+
+        // Fetch last message
+        let last_message: any = undefined;
+        if (chat.last_message_id) {
+          const { data: lastMsgArr, error: lastMsgError } = await supabase
+            .from("messages")
+            .select("*")
+            .eq("id", chat.last_message_id)
+            .maybeSingle();
+
+          if (lastMsgError) {
+            throw new Error("Error fetching last message: " + lastMsgError.message);
+          }
+          last_message = lastMsgArr || undefined;
+        }
+
+        // For private chat, fetch other user's profile
+        let other_user_profile: any = undefined;
+        if (chat.type === "private" && participants.length === 2) {
+          const otherUserId = participants.find((uid: string) => uid !== user.id);
+          if (otherUserId) {
+            const { data: profileRow, error: profileError } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("user_id", otherUserId)
+              .maybeSingle();
+
+            if (profileError) {
+              throw new Error("Error fetching other user profile: " + profileError.message);
+            }
+            other_user_profile = profileRow || undefined;
+          }
+        }
+
+        return {
+          id: chat.id,
+          name: chat.name,
+          creator_id: chat.creator_id,
+          created_at: chat.created_at,
+          updated_at: chat.updated_at,
+          participants,
+          type: chat.type,
+          image: chat.image,
+          description: chat.description ?? "",
+          unreadedCount: unreadedCount ?? 0,
+          last_message_id: chat.last_message_id ?? undefined,
+          is_active: chat.is_active ?? true,
+          last_message,
+          other_user_profile,
+        } as ChatResponse;
+      })
+    );
+
     return {
-      chats: chats as any, // Should be ChatResponse[]
+      chats: enrichedChats,
       page,
       perPage,
       total: count ?? 0,

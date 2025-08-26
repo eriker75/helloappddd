@@ -17,6 +17,7 @@ import { useCurrentChatMessagesStore } from "../stores/current-chat-messages.sto
  */
 export function useGetChatsService(page: number = 1, perPage: number = 20) {
   const { data: myFetchedChats, isLoading, isError } = useFindMyChats(page, perPage);
+  console.log(JSON.stringify(myFetchedChats,null,2));
   const setChats = useChatListStore((s) => s.setChats);
   const chats = useChatListStore((s) => s.chats);
   const total = useChatListStore((s) => s.total);

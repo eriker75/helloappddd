@@ -18,10 +18,19 @@ import { mapUserProfileResponseToUserProfileEntity } from "./UserProfileMapper";
  * If not present, ensure the model is updated or provide appropriate fallbacks here.
  */
 export function mapSingleChatResponseToChatEntity(singleChatResponse: ChatResponse): Chat {
+  console.log("\x1b[36m"+JSON.stringify(singleChatResponse, null, 2)+"\x1b[0m");
+
+  let name: string = "";
+  let image: string = "";
+  if (singleChatResponse.type === "private") {
+    name = singleChatResponse?.other_user_profile?.alias ?? "";
+    image = singleChatResponse?.other_user_profile?.avatar ?? "";
+  }
+
   return {
     chatId: singleChatResponse.id,
-    name: singleChatResponse.name,
-    image: singleChatResponse.image ?? "",
+    name,
+    image,
     description: singleChatResponse.description ?? "",
     type: (singleChatResponse.type as ChatType) ?? "private",
     lastMessageContent: singleChatResponse.last_message?.content ?? "",

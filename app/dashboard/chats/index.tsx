@@ -10,17 +10,11 @@ import { useGetChatsService } from "@/src/presentation/services/ChatService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import formatMessageTime from "@/src/utils/formatMessageTime";
 import { useRouter } from "expo-router";
-import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  Image,
-  TouchableOpacity,
-  View
-} from "react-native";
+import { ActivityIndicator, Dimensions, FlatList, Image, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const ChatsNotFound = require("@/assets/images/ChatsNotFound.png");
+const DefaultProfileImg = require("@/assets/images/avatar-placeholder.png");
 
 const MessageStatusIcon = ({ status }: { status: string }) => {
   if (status === "sent") return <CheckSmall />;
@@ -54,11 +48,7 @@ const ChatListItem = ({
   isMe,
   onPress,
 }: ChatListItemProps) => (
-  <TouchableOpacity
-    onPress={() => onPress(id)}
-    activeOpacity={0.7}
-    className="bg-[#eaf8fc] pt-3"
-  >
+  <TouchableOpacity onPress={() => onPress(id)} activeOpacity={0.7} className="bg-[#eaf8fc] pt-3">
     <HStack
       style={{
         alignItems: "center",
@@ -72,19 +62,17 @@ const ChatListItem = ({
       <Avatar size="lg" style={{ marginRight: 12 }}>
         {loading ? (
           <ActivityIndicator size="small" color="#4fc3f7" />
-        ) : (
+        ) : typeof avatar === "string" ? (
           <AvatarImage source={{ uri: avatar }} />
+        ) : (
+          <AvatarImage source={avatar} />
         )}
       </Avatar>
       <VStack style={{ flex: 1 }}>
-        <HStack
-          style={{ alignItems: "center", justifyContent: "space-between" }}
-        >
+        <HStack style={{ alignItems: "center", justifyContent: "space-between" }}>
           <Text style={{ fontWeight: "bold", fontSize: 16 }}>{name}</Text>
           <Text style={{ color: "#b0b0b0", fontSize: 12 }}>
-            {time && !isNaN(new Date(time).getTime())
-              ? formatMessageTime(time)
-              : "—"}
+            {time && !isNaN(new Date(time).getTime()) ? formatMessageTime(time) : "—"}
           </Text>
         </HStack>
         <HStack style={{ alignItems: "center", marginTop: 2 }}>
@@ -116,9 +104,7 @@ const ChatListItem = ({
                 paddingHorizontal: 6,
               }}
             >
-              <Text style={{ color: "#fff", fontSize: 12, fontWeight: "bold" }}>
-                {unread}
-              </Text>
+              <Text style={{ color: "#fff", fontSize: 12, fontWeight: "bold" }}>{unread}</Text>
             </View>
           )}
         </HStack>
@@ -133,6 +119,8 @@ const ChatScreen = () => {
 
   // Use service and store for chat list
   const { chats, isLoading, isError, total } = useGetChatsService();
+
+  console.log(JSON.stringify(chats, null, 2));
 
   // Debug: Log chat IDs to check for missing/duplicate keys
   if (__DEV__ && Array.isArray(chats)) {
@@ -156,7 +144,6 @@ const ChatScreen = () => {
   const imageWidth = width * 0.5;
   const imageHeight = imageWidth * 1.1;
 
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#eaf8fc" }}>
       {/* Header */}
@@ -176,9 +163,7 @@ const ChatScreen = () => {
         <Avatar size="md">
           <AvatarImage
             source={{
-              uri:
-                avatar ||
-                "https://randomuser.me/api/portraits/men/10.jpg",
+              uri: avatar || "https://randomuser.me/api/portraits/men/10.jpg",
             }}
           />
         </Avatar>
@@ -198,9 +183,7 @@ const ChatScreen = () => {
           <Spinner size="large" color="#4fc3f7" />
         </View>
       ) : isError ? (
-        <View
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Text>{"Error cargando chats"}</Text>
         </View>
       ) : !chats || chats.length === 0 ? (
@@ -239,10 +222,7 @@ const ChatScreen = () => {
           keyExtractor={(chat: any, index: number) => {
             if (!chat.chatId) {
               if (__DEV__) {
-                console.warn(
-                  `[ChatList] Missing chatId for chat at index ${index}:`,
-                  chat
-                );
+                console.warn(`[ChatList] Missing chatId for chat at index ${index}:`, chat);
               }
               // Fallback to index as key (not ideal, but prevents React warning)
               return `fallback-key-${index}`;
@@ -251,8 +231,11 @@ const ChatScreen = () => {
           }}
           renderItem={({ item: chat }: { item: any }) => {
             // You may want to adapt this logic if you need to show group/individual avatars/names
-            const name = chat.chatDescription || "Chat";
-            const avatar = chat.chatImage || "https://randomuser.me/api/portraits/lego/1.jpg";
+            const name = chat.name || "Chat";
+            const avatar =
+              chat.image && typeof chat.image === "string" && chat.image.length > 0
+                ? chat.image
+                : DefaultProfileImg;
             const last = {
               text: chat.chatLastMessageContent,
               isMe: chat.chatLastMessageIsByMe,
@@ -268,9 +251,7 @@ const ChatScreen = () => {
                 avatar={avatar}
                 loading={false}
                 lastMessage={
-                  last.text !== undefined && last.text !== null
-                    ? (last.isMe ? `Tú: ${last.text}` : last.text)
-                    : ""
+                  last.text !== undefined && last.text !== null ? (last.isMe ? `Tú: ${last.text}` : last.text) : ""
                 }
                 lastMessageStatus={last.status}
                 time={last.time}
