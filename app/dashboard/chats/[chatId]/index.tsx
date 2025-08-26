@@ -11,37 +11,131 @@ import { pickAndUploadChatImageS3 } from "@/src/utils/uploadImageToSupabase";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useRef, useState } from "react";
-import { FlatList, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet } from "react-native";
+import {
+  FlatList,
+  InteractionManager,
+  KeyboardAvoidingView,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+} from "react-native";
 
 // --- New: Image handler logic ---
 
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { useGetCurrentUserProfileByUserId } from "@/src/presentation/services/UserProfileService";
+import { useChatListStore } from "@/src/presentation/stores/chat-list.store";
 
-const ChatHeader = () => (
-  <Box style={styles.header}>
-    <HStack
-      space="md"
-      style={{
-        alignItems: "center",
-        justifyContent: "space-between",
-        flex: 1,
-      }}
-    >
-      <Pressable
-        onPress={() => {
-          router.replace({ pathname: "/dashboard/chats" });
+const DefaultProfileImg = require("@/assets/images/avatar-placeholder.png");
+
+const ChatHeader = ({ chatId, myUserId }: { chatId: string; myUserId: string }) => {
+  const chat = useChatListStore((s) => s.chats[chatId]);
+  // Only display for private (1-1) chat
+  const isPrivate = !!chat && chat.type === "private";
+  // Find target userId (even if not private for consistent hook order; will be undefined if not available)
+  const otherUserId = isPrivate && chat
+    ? chat.participants.find((id) => id !== myUserId)
+    : "";
+  // Always call the hook with empty string if otherUserId is undefined
+  const userIdForHook = typeof otherUserId === "string" && otherUserId ? otherUserId : "";
+  const userProfileResult = useGetCurrentUserProfileByUserId(userIdForHook);
+  const loadingProfile = userProfileResult.isLoading;
+  const otherUserProfile =
+    "data" in userProfileResult && userProfileResult.data
+      ? userProfileResult.data
+      : undefined;
+
+  if (!isPrivate) {
+    return (
+      <Box style={styles.header}>
+        <HStack
+          space="md"
+          style={{
+            alignItems: "center",
+            justifyContent: "space-between",
+            flex: 1,
+          }}
+        >
+          <Pressable
+            onPress={() => {
+              router.replace({ pathname: "/dashboard/chats" });
+            }}
+          >
+            <MaterialIcons name="arrow-back" size={24} color="#222" />
+          </Pressable>
+          <VStack style={{ flex: 1, alignItems: "center" }}>
+            <Text style={styles.headerName}>{chat?.name || "Chat"}</Text>
+          </VStack>
+          <Pressable>
+            <MaterialIcons name="more-vert" size={24} color="#222" />
+          </Pressable>
+        </HStack>
+      </Box>
+    );
+  }
+
+  // Fallbacks
+  let displayAlias = "Desconocido";
+  let displayAvatar = DefaultProfileImg;
+  if (
+    otherUserProfile &&
+    typeof otherUserProfile === "object" &&
+    "alias" in otherUserProfile &&
+    typeof (otherUserProfile as any).alias === "string"
+  ) {
+    displayAlias = (otherUserProfile as any).alias as string;
+  }
+  if (
+    otherUserProfile &&
+    typeof otherUserProfile === "object" &&
+    "avatar" in otherUserProfile &&
+    typeof (otherUserProfile as any).avatar === "string" &&
+    (otherUserProfile as any).avatar
+  ) {
+    displayAvatar = { uri: (otherUserProfile as any).avatar as string };
+  }
+
+  return (
+    <Box style={styles.header}>
+      <HStack
+        space="md"
+        style={{
+          alignItems: "center",
+          flex: 1,
         }}
       >
-        <MaterialIcons name="arrow-back" size={24} color="#222" />
-      </Pressable>
-      <VStack style={{ flex: 1, alignItems: "center" }}>
-        <Text style={styles.headerName}>Chat</Text>
-      </VStack>
-      <Pressable>
-        <MaterialIcons name="more-vert" size={24} color="#222" />
-      </Pressable>
-    </HStack>
-  </Box>
-);
+        <Pressable
+          onPress={() => {
+            router.replace({ pathname: "/dashboard/chats" });
+          }}
+          style={{ marginRight: 8 }}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#222" />
+        </Pressable>
+        <Pressable
+          style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
+          onPress={() => {
+            if (userIdForHook) {
+              router.push(`/dashboard/profile/${userIdForHook}`);
+            }
+          }}
+        >
+          <Avatar size="md">
+            <AvatarImage source={displayAvatar} />
+          </Avatar>
+          <Text style={styles.headerName}>
+            {loadingProfile ? "Cargando..." : displayAlias}
+          </Text>
+        </Pressable>
+        <Pressable>
+          <MaterialIcons name="more-vert" size={24} color="#222" />
+        </Pressable>
+      </HStack>
+    </Box>
+  );
+};
 
 const DateSeparator = ({ label }: { label: string }) => (
   <Box style={styles.dateSeparator}>
@@ -148,6 +242,7 @@ const ChatInputBar = ({
 
 const ChatScreen = () => {
   const flatListRef = useRef<FlatList>(null);
+  const isAtBottomRef = useRef(true); // Tracks if we're at/near the bottom
   const { chatId } = useLocalSearchParams<{ chatId: string }>();
 
   // Current authenticated userId for my/other bubble
@@ -171,21 +266,39 @@ const ChatScreen = () => {
   const { sendMessage, status } = useSendMessageToChatService(chatId || "");
   const isSending = status === "pending";
 
-  // FIX 3: Memoize scrollToBottom callback
+  // --- SCROLL/FOLLOW LOGIC ---
+  // Robustly scroll to end (bottom) using scrollToEnd, fallback to scrollToIndex
   const scrollToBottom = React.useCallback(() => {
-    if (storeMessages.length > 0) {
-      flatListRef.current?.scrollToIndex({ index: 0, animated: true });
+    if (storeMessages.length === 0 || !flatListRef.current) return;
+    try {
+      flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+      console.log("[ChatScreen] scrollToOffset({offset:0}) called");
+    } catch (err) {
+      console.warn("[ChatScreen] Auto-scroll failed", err);
     }
   }, [storeMessages.length]);
 
-  // FIX 4: Auto-scroll effect with small delay
+  // Track if user is at/near bottom (within 24px)
+  const handleScroll = React.useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const paddingToBottom = 24;
+    const isBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+    isAtBottomRef.current = isBottom;
+  }, []);
+
+  // On new message: scroll only if at bottom or on first load
   const messagesLength = storeMessages.length;
   React.useEffect(() => {
-    if (messagesLength > 0) {
-      const timeoutId = setTimeout(() => {
-        scrollToBottom();
-      }, 100);
-      return () => clearTimeout(timeoutId);
+    if (messagesLength > 0 && (isAtBottomRef.current || messagesLength === 1)) {
+      // Use InteractionManager to ensure scroll runs after rendering
+      const task = InteractionManager.runAfterInteractions(() => {
+        setTimeout(() => {
+          scrollToBottom();
+        }, 100); // Small delay just in case
+      });
+      return () => {
+        if (task && typeof task.cancel === "function") task.cancel();
+      };
     }
   }, [messagesLength, scrollToBottom]);
 
@@ -270,7 +383,7 @@ const ChatScreen = () => {
                   alt="Imagen enviada"
                 />
               ) : (
-                <Text style={{ color: '#f00', fontStyle: 'italic' }}>Imagen no disponible</Text>
+                <Text style={{ color: "#f00", fontStyle: "italic" }}>Imagen no disponible</Text>
               )}
             </ChatBubble>
           ) : (
@@ -301,7 +414,7 @@ const ChatScreen = () => {
         keyboardVerticalOffset={8}
       >
         <Box style={styles.container}>
-          <ChatHeader />
+          <ChatHeader chatId={chatId!} myUserId={myUserId} />
           {isLoading ? (
             <Box
               style={{
@@ -325,17 +438,19 @@ const ChatScreen = () => {
           ) : (
             <FlatList
               ref={flatListRef}
-              data={storeMessages}
+              data={[...storeMessages].reverse()}
               keyExtractor={keyExtractor}
               renderItem={renderItem}
               contentContainerStyle={styles.messagesContainer}
               showsVerticalScrollIndicator={false}
               // Standard top-down chat: show from top, newest at bottom
-              inverted={false}
+              inverted={true}
               removeClippedSubviews={true}
               maxToRenderPerBatch={10}
               windowSize={10}
               initialNumToRender={20}
+              onScroll={handleScroll}
+              scrollEventThrottle={32}
             />
           )}
           <ChatInputBar
@@ -350,8 +465,6 @@ const ChatScreen = () => {
     </SafeAreaView>
   );
 };
-
-
 
 const styles = StyleSheet.create({
   safeArea: {

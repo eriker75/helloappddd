@@ -44,14 +44,28 @@ export function mapSingleChatResponseToChatEntity(singleChatResponse: ChatRespon
       ? new Date(singleChatResponse.last_message.updated_at)
       : new Date(singleChatResponse.updated_at),
     unreadedCount: singleChatResponse.unreadedCount ?? 0,
-    participants: singleChatResponse.participants ?? [],
+    participants: Array.isArray(singleChatResponse.participants)
+      ? singleChatResponse.participants
+      : (() => {
+          console.warn(
+            "[ChatMapper] WARNING: participants field missing or not array in API response!",
+            JSON.stringify(singleChatResponse, null, 2)
+          );
+          return [];
+        })(),
     isActive: singleChatResponse.is_active,
     createdAt: new Date(singleChatResponse.created_at),
     updatedAt: new Date(singleChatResponse.updated_at),
     ...(singleChatResponse.other_user_profile
-      ? {
-          otherUserProfile: mapUserProfileResponseToUserProfileEntity(singleChatResponse.other_user_profile),
-        }
+      ? (() => {
+          console.log(
+            "[ChatMapper] Mapping other_user_profile to otherUserProfile. raw:",
+            JSON.stringify(singleChatResponse.other_user_profile, null, 2)
+          );
+          return {
+            otherUserProfile: mapUserProfileResponseToUserProfileEntity(singleChatResponse.other_user_profile),
+          };
+        })()
       : {}),
   };
 }

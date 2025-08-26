@@ -217,10 +217,27 @@ const ChatScreen = () => {
           data={chats}
           keyExtractor={(chat: any, index: number) => chat.chatId}
           renderItem={({ item: chat }: { item: any }) => {
-            // You may want to adapt this logic if you need to show group/individual avatars/names
-            const name = chat.name || "Chat";
-            const avatar =
-              chat.image && typeof chat.image === "string" && chat.image.length > 0 ? chat.image : DefaultProfileImg;
+            // Show profile alias/avatar for private chats if available
+            let name;
+            let avatar;
+            if (
+              chat.type === "private" &&
+              chat.otherUserProfile &&
+              typeof chat.otherUserProfile === "object" &&
+              chat.otherUserProfile.alias
+            ) {
+              name = chat.otherUserProfile.alias;
+              avatar =
+                chat.otherUserProfile.avatar && typeof chat.otherUserProfile.avatar === "string"
+                  ? chat.otherUserProfile.avatar
+                  : DefaultProfileImg;
+            } else {
+              name = chat.name || "Chat";
+              avatar =
+                chat.image && typeof chat.image === "string" && chat.image.length > 0
+                  ? chat.image
+                  : DefaultProfileImg;
+            }
             const last = {
               text: chat.chatLastMessageContent,
               isMe: chat.chatLastMessageIsByMe,

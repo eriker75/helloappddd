@@ -29,3 +29,27 @@
 - All image/overlay containers now directly use window width/height from `Dimensions`, with overlays applied by `StyleSheet.absoluteFillObject`.
 - Now both image and semi-transparent overlay always stretch to screen edges, regardless of device.
 - See [`2025-08-26-fix-swipe-fullscreen.md`](2025-08-26-fix-swipe-fullscreen.md) for technical details and before/after rationale.
+
+## 2025-08-26 - Conditional Auto-Scroll-to-Bottom in Chat
+
+- Improved the chat messages view ([`app/dashboard/chats/[chatId]/index.tsx`]) so it automatically scrolls to the latest message **only if the user is already at the bottom** when a new message arrives or is sent.
+- If the user is reading old messages (scrolled up), new incoming messages no longer force-scroll to the bottom, avoiding disruptions.
+- Implemented by tracking scroll position and only invoking `scrollToIndex` when near the end of the list. See [2025-08-26-scroll-to-bottom-on-new-message.md](2025-08-26-scroll-to-bottom-on-new-message.md) for plan, rationale, and implementation details.
+- Fixes user experience issue reported for chat UX.
+
+## 2025-08-26 - Show Other User Profile in Chat Header (Private Chats)
+
+- Enhanced the chat messages view header ([`app/dashboard/chats/[chatId]/index.tsx`]) to display the other user's avatar and alias for private (1-1) chats, aligned next to the back arrow.
+- Tapping the avatar+alias area in the header now navigates directly to the other user's profile page.
+- Implementation details:
+  - Uses chatId from params to look up the Chat entity from the chat list store and determine chat type/participants.
+  - The other participant's profile information (avatar, alias) is loaded via `useGetCurrentUserProfileByUserId` hook from UserProfileService.
+  - Robust error and fallback handling for loading and missing data. Group chats keep the standard header.
+- This offers a more natural, modern chat UX and reuses domain/store/service logic. See [`2025-08-26-update-chat-header.md`](2025-08-26-update-chat-header.md) for motivation, plan, and design notes.
+
+## 2025-08-26 - Backend: `other_user_profile` Now Included in Private Chat Responses
+
+- Fixed the chat API contract so that both chat list and chat-by-id endpoints now always provide `other_user_profile` with alias and avatar for private chats.
+- Controller logic (`ChatController.ts`) updated to batch-fetch and inject the profile of the "other" participant after querying chats.
+- Ensures consistent frontend UX, avoids extra client requests, and standardized the contract for all private chats.
+- Follows the enforced project pattern of self-contained, rich domain responses.

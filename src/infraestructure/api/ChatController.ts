@@ -9,14 +9,22 @@ import { getAuthenticatedUser } from "@/src/utils/getAuthenticatedUser";
 import { supabase } from "@/src/utils/supabase";
 
 export class ChatController {
+  // --- Helper: Fetch full user profile (public info) by userId ---
+  private async fetchUserProfileByUserId(user_id: string): Promise<any | null> {
+    const { data, error } = await supabase.from("profiles").select("*").eq("user_id", user_id).single();
+    if (error || !data) return null;
+    // Could map/normalize if needed
+    return data;
+  }
+
   // The following methods are restored to match datasource/repository dependencies
 
   async findMyChatById(id: string): Promise<ChatResponse | null> {
+    console.log('\x1b[33m\n[ChatController] ====> START findMyChatById ====\n\x1b[0m');
     const user = await getAuthenticatedUser();
     const { data: participantRows } = await supabase
       .from("participants")
-      .select("chat_id")
-      .eq("user_id", user.id)
+      .select("chat_id, user_id")
       .eq("chat_id", id);
 
     if (!participantRows || participantRows.length === 0) return null;
@@ -25,10 +33,52 @@ export class ChatController {
 
     if (!chats || chats.length === 0) return null;
 
-    return chats[0] as ChatResponse;
+    let chat = chats[0] as ChatResponse;
+
+    // --- PATCH: always populate chat.participants from participants table! ---
+    const { data: chatParticipants, error: participantsError } = await supabase
+      .from("participants")
+      .select("user_id")
+      .eq("chat_id", chat.id);
+    if (Array.isArray(chatParticipants)) {
+      chat.participants = chatParticipants.map((pr: any) => pr.user_id);
+    } else {
+      chat.participants = [];
+    }
+
+    // For private chats: attach other_user_profile
+    if (chat.type === "private" && Array.isArray(chat.participants)) {
+      // Find other participant
+      const myId = user.id;
+      const otherUserId = chat.participants.find(pid => pid !== myId);
+      if (otherUserId) {
+        const otherProfile = await this.fetchUserProfileByUserId(otherUserId);
+        if (otherProfile) {
+          chat.other_user_profile = otherProfile;
+          console.log(
+            `\n\x1b[32m[ChatController] findMyChatById id=${chat.id} type=private, attached other_user_profile:\n${JSON.stringify(
+              {
+                alias: otherProfile.alias,
+                avatar: otherProfile.avatar,
+                user_id: otherProfile.user_id,
+                full_profile: otherProfile,
+              },
+              null,
+              2,
+            )}\x1b[0m\n`
+          );
+        } else {
+          console.warn(`[ChatController] findMyChatById id=${chat.id} type=private, FAILED to attach other_user_profile`);
+        }
+      }
+    } else {
+      console.log(`[ChatController] findMyChatById id=${chat.id} type=${chat.type}, no other_user_profile relevant`);
+    }
+    return chat;
   }
 
   async findMyChats(page: number, perPage: number): Promise<ChatListResponse> {
+    console.log('\x1b[33m\n[ChatController] ====> START findMyChats ====\n\x1b[0m');
     // Dummy pagination logic
     const user = await getAuthenticatedUser();
     const { data: participantRows } = await supabase.from("participants").select("chat_id").eq("user_id", user.id);
@@ -36,11 +86,79 @@ export class ChatController {
 
     const { data: chats } = await supabase.from("chats").select("*").in("id", chatIds).eq("is_active", true);
 
+    // Compose other_user_profile for each private chat
+    let chatsWithProfiles: ChatResponse[] = Array.isArray(chats) ? [...chats] : [];
+
+    // --- PATCH: get participants for all chats in parallel, then inject! ---
+    const chatIdList = chatsWithProfiles.map(chat => chat.id);
+    let allParticipants: { [chatId: string]: string[] } = {};
+    if (chatIdList.length > 0) {
+      const { data: participantsData } = await supabase
+        .from("participants")
+        .select("chat_id, user_id")
+        .in("chat_id", chatIdList);
+
+      if (Array.isArray(participantsData)) {
+        for (const p of participantsData) {
+          if (!allParticipants[p.chat_id]) allParticipants[p.chat_id] = [];
+          allParticipants[p.chat_id].push(p.user_id);
+        }
+      }
+    }
+    // Inject participants into each chat
+    chatsWithProfiles.forEach(chat => {
+      chat.participants = allParticipants[chat.id] || [];
+    });
+
+    // Prepare a mapping of private chat indexes to other user ids
+    const privateChatIndexes: [number, string][] = [];
+    chatsWithProfiles.forEach((chat, idx) => {
+      if (chat.type === "private" && Array.isArray(chat.participants)) {
+        const myId = user.id;
+        const otherUserId = chat.participants.find((pid: string) => pid !== myId);
+        if (otherUserId) {
+          privateChatIndexes.push([idx, otherUserId]);
+        }
+      }
+    });
+
+    // Batch fetch all required profiles
+    const otherUserIds = privateChatIndexes.map(([, uid]) => uid);
+    const profilesByUserId: Record<string, any> = {};
+    if (otherUserIds.length > 0) {
+      const { data: profiles } = await supabase.from("profiles").select("*").in("user_id", otherUserIds);
+      if (Array.isArray(profiles)) {
+        for (const profile of profiles) {
+          profilesByUserId[profile.user_id] = profile;
+        }
+      }
+    }
+    // Attach to result
+    for (const [idx, uid] of privateChatIndexes) {
+      if (profilesByUserId[uid]) {
+        (chatsWithProfiles[idx] as any).other_user_profile = profilesByUserId[uid];
+        console.log(
+          `\n\x1b[32m[ChatController] findMyChats chatId=${chatsWithProfiles[idx].id} attached other_user_profile:\n${JSON.stringify(
+            {
+              alias: profilesByUserId[uid].alias,
+              avatar: profilesByUserId[uid].avatar,
+              user_id: profilesByUserId[uid].user_id,
+              full_profile: profilesByUserId[uid],
+            },
+            null,
+            2,
+          )}\x1b[0m\n`
+        );
+      } else {
+        console.warn(`[ChatController] findMyChats chatId=${chatsWithProfiles[idx].id} FAILED to attach other_user_profile`);
+      }
+    }
+
     return {
-      chats: chats ?? [],
+      chats: chatsWithProfiles,
       page,
       perPage,
-      total: chats?.length ?? 0,
+      total: chatsWithProfiles.length,
       hasMore: false,
     };
   }
