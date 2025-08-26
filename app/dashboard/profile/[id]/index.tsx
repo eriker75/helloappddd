@@ -43,6 +43,34 @@ export default function UserProfileByIdScreen() {
   // Fetch and update profile for visited user on mount
   const { isLoading, error } = useGetCurrentUserProfileByUserId(id as string);
 
+  // State: existing chat with this user if it exists, else null
+  const [existingChat, setExistingChat] = useState<null | { chatId: string }>(null);
+  const [checkingChat, setCheckingChat] = useState(false);
+
+  // On mount/id/userId/profile change, check for existing private chat
+  useEffect(() => {
+    async function checkForExistingChat() {
+      setCheckingChat(true);
+      setExistingChat(null);
+      try {
+        // Only check if looking at another user, not self
+        if (userId && currentUserProfile && userId !== currentUserProfile.userId) {
+          const { findPrivateChatWithUserService } = await import("@/src/presentation/services/ChatService");
+          const chat = await findPrivateChatWithUserService(currentUserProfile.userId);
+          if (chat?.chatId) {
+            setExistingChat({ chatId: chat.chatId });
+          }
+        }
+      } catch (e) {
+        console.log(e);
+        setExistingChat(null);
+      }
+      setCheckingChat(false);
+    }
+    checkForExistingChat();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, currentUserProfile?.userId]);
+
   // Utility to extract S3 key from a Supabase Storage URL
   function extractS3KeyFromUrl(url: string): string | null {
     // Example: .../helloapp/profiles/uuid/secondary_1.jpg?...  -> profiles/uuid/secondary_1.jpg
@@ -230,19 +258,36 @@ export default function UserProfileByIdScreen() {
         <View style={styles.actionButtonWrapper}>
           <TouchableOpacity
             style={styles.actionButton}
-            disabled={isCreatingChat}
-            onPress={() => {
-              console.log("creating chat...");
-              createChat({
-                type: "private",
-                unreadedCount: 0,
-                creatorId: userId,
-                isActive: true,
-                participants: [currentUserProfile.userId],
-              })
+            disabled={isCreatingChat || checkingChat}
+            onPress={async () => {
+              if (existingChat?.chatId) {
+                // Go to chat directly
+                const { router } = await import("expo-router");
+                router.push(`/dashboard/chats/${existingChat.chatId}`);
+              } else {
+                console.log("creating chat...");
+                createChat(
+                  {
+                    type: "private",
+                    unreadedCount: 0,
+                    creatorId: userId,
+                    isActive: true,
+                    participants: [currentUserProfile.userId],
+                  },
+                  (error) => {
+                    console.error("Chat creation error:", error);
+                  }
+                );
+              }
             }}
           >
-            <Text style={styles.actionButtonText}>¡Hola, {currentUserProfile.alias || "Usuario"}! 👋</Text>
+            <Text style={styles.actionButtonText}>
+              {checkingChat
+                ? "Cargando..."
+                : existingChat?.chatId
+                ? "Ir al chat"
+                : `¡Hola, ${currentUserProfile.alias || "Usuario"}! 👋`}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

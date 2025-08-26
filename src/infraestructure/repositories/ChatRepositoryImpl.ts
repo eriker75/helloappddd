@@ -79,7 +79,7 @@ export function useGetMyChatMessages(chatId: string, page: number, perPage: numb
 }
 
 // Mutations
-export function useCreateChat(): UseMutationResult<boolean, unknown, Partial<Chat>> {
+export function useCreateChat(): UseMutationResult<Chat, unknown, Partial<Chat>> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (chat: Partial<Chat>) => datasource.createChat(chat),
@@ -107,6 +107,13 @@ export function useDeleteChat(): UseMutationResult<boolean, unknown, string> {
       queryClient.invalidateQueries({ queryKey: ["chat"] });
     },
   });
+}
+
+/**
+ * Finds existing private chat with another user. Returns a Promise<Chat | null>.
+ */
+export async function findPrivateChatWithUser(otherUserId: string): Promise<Chat | null> {
+  return await datasource.findPrivateChatWithUser(otherUserId);
 }
 
 /**

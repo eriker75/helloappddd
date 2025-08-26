@@ -22,6 +22,13 @@ export class ChatDatasourceImpl implements AbastractChatDatasoruce {
     return mapSingleChatResponseToChatEntity(singleChatResponse);
   }
 
+  async findPrivateChatWithUser(otherUserId: string): Promise<Chat | null> {
+    const chatResponse = await this.controller.findPrivateChatWithUser(otherUserId);
+    if (!chatResponse) return null;
+    const { mapSingleChatResponseToChatEntity } = await import("../mappers/ChatMapper");
+    return mapSingleChatResponseToChatEntity(chatResponse);
+  }
+
   async findMyChats(page: number, perPage: number): Promise<PaginatedChats> {
     const allMyChats = await this.controller.findMyChats(page, perPage);
     const chats = allMyChats.chats.map((chat) => mapSingleChatResponseToChatEntity(chat));
@@ -34,9 +41,10 @@ export class ChatDatasourceImpl implements AbastractChatDatasoruce {
     };
   }
 
-  async createChat(chat: Partial<Chat>): Promise<boolean> {
+  async createChat(chat: Partial<Chat>): Promise<Chat> {
     const chatRequestData = mapPartialChatToCreateChatRequestData(chat);
-    return await this.controller.createChat(chatRequestData);
+    const chatResponse = await this.controller.createChat(chatRequestData);
+    return mapSingleChatResponseToChatEntity(chatResponse);
   }
 
   async updateChat(chatId: string, chat: Partial<Chat>): Promise<boolean> {

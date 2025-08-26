@@ -132,6 +132,14 @@ export function useCreateChatService() {
 }
 
 /**
+ * Service to check if a private chat already exists with another user.
+ */
+export async function findPrivateChatWithUserService(otherUserId: string) {
+  const { findPrivateChatWithUser } = await import("@/src/infraestructure/repositories/ChatRepositoryImpl");
+  return await findPrivateChatWithUser(otherUserId);
+}
+
+/**
  * Hook to fetch initial messages for a chat and sync with currentChatStore.
  */
 export function useGetChatMessagesService(chatId: string, page: number = 1, perPage: number = 20) {
