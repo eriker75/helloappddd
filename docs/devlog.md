@@ -22,3 +22,10 @@
 - Solution: Refactored logic to, for each chat in the paginated result, fetch participant IDs, count unread messages for the authenticated user, fetch the most recent message, and (for private chats) retrieve the full user profile of the other participant. The controller now returns fully composed `ChatResponse` objects.
 - Impact: UI and service layers now receive complete chat information as expected by the domain model, enabling accurate badge counts, conversation previews, and other features.
 - See [`docs/2025-08-25-chat-list-rich-response.md`](2025-08-25-chat-list-rich-response.md) for rationale and implementation plan.
+
+## 2025-08-26 - Swipe Screen: Make Images and Overlay Fill Full Device Height/Width
+
+- Fixed bug where the image and overlay in the swipe screen (`app/dashboard/swipe.tsx`) did not cover the whole device screen.
+- All image/overlay containers now directly use window width/height from `Dimensions`, with overlays applied by `StyleSheet.absoluteFillObject`.
+- Now both image and semi-transparent overlay always stretch to screen edges, regardless of device.
+- See [`2025-08-26-fix-swipe-fullscreen.md`](2025-08-26-fix-swipe-fullscreen.md) for technical details and before/after rationale.

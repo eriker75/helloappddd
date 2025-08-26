@@ -376,7 +376,8 @@ const SwipeScreen = () => {
         className="absolute left-0 right-0 z-[1] w-full"
         style={{
           bottom: 0,
-          height: "100%",
+          width: width,
+          height: height,
           justifyContent: "center",
           alignItems: "center",
         }}
@@ -385,7 +386,7 @@ const SwipeScreen = () => {
           isLoading || isFetching ? (
             <View
               className="relative items-center justify-center"
-              style={{ width, height: height - IMAGE_AREA_TOP - IMAGE_AREA_BOTTOM }}
+              style={{ width, height }}
             >
               <Image
                 source={require("@/assets/images/avatar-placeholder.png")}
@@ -398,6 +399,7 @@ const SwipeScreen = () => {
                 }}
                 resizeMode="cover"
               />
+              <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.20)" }} pointerEvents="none" />
               <Text
                 className="text-white text-[20px] font-bold text-center mt-6 mb-2"
                 style={{
@@ -416,7 +418,7 @@ const SwipeScreen = () => {
           ) : (
             <View
               className="relative items-center justify-center"
-              style={{ width, height: height - IMAGE_AREA_TOP - IMAGE_AREA_BOTTOM }}
+              style={{ width, height }}
             >
               <Image
                 source={require("@/assets/images/avatar-placeholder.png")}
@@ -429,6 +431,7 @@ const SwipeScreen = () => {
                 }}
                 resizeMode="cover"
               />
+              <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.20)" }} pointerEvents="none" />
               <Text
                 className="text-white text-[22px] font-bold text-center mt-6 mb-2"
                 style={{
@@ -459,42 +462,55 @@ const SwipeScreen = () => {
             showsHorizontalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            style={{ flex: 1 }}
+            style={{ width, height }}
             contentContainerStyle={{
               alignItems: "center",
               justifyContent: "center",
-              minHeight: "100%",
+              minHeight: height,
             }}
           >
             {resolvedImages.map((imgSrc: string, index: number) => {
               console.log(`Rendering image ${index}:`, imgSrc);
 
               if (index === 0) {
-                // Avatar: large, nearly full width, with padding, circular
+                // Avatar: large, nearly full width, with padding, circular, full-screen bg and overlay
                 return (
                   <View
                     key={index}
                     className="relative items-center justify-center"
                     style={{
                       width: width,
-                      height: "100%",
+                      height: height,
                       alignItems: "center",
                       justifyContent: "center",
-                      paddingHorizontal: width * 0.02,
                     }}
                   >
                     <View
                       style={{
-                        width: width * 0.96,
-                        height: width * 0.96,
-                        borderRadius: (width * 0.96) / 2,
+                        position: "absolute",
+                        width: width,
+                        height: height,
+                        left: 0,
+                        top: 0,
+                        backgroundColor: "#5BC6EA",
+                        zIndex: 1,
+                      }}
+                    />
+                    <View
+                      style={{
+                        width: width * 0.95,
+                        height: width * 0.95,
+                        borderRadius: (width * 0.95) / 2,
+                        alignSelf: "center",
                         backgroundColor: "#5BC6EA",
                         alignItems: "center",
                         justifyContent: "center",
+                        marginTop: height * 0.12,
+                        zIndex: 2,
                         shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.2,
-                        shadowRadius: 8,
+                        shadowOffset: { width: 0, height: 6 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 12,
                       }}
                     >
                       <Image
@@ -513,21 +529,20 @@ const SwipeScreen = () => {
                         onLoad={() => console.log("Image loaded successfully:", imgSrc)}
                       />
                     </View>
-                    <View style={gradientOverlayStyle} pointerEvents="none" />
+                    <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.25)", zIndex: 3 }} pointerEvents="none" />
                   </View>
                 );
               } else {
-                // Secondary images: fill as much of the blue area as possible
+                // Secondary images - fill full background
                 return (
                   <View
                     key={index}
                     className="relative items-center justify-center"
                     style={{
                       width: width,
-                      height: "100%",
+                      height: height,
                       alignItems: "center",
                       justifyContent: "center",
-                      paddingHorizontal: width * 0.02,
                     }}
                   >
                     <Image
@@ -537,8 +552,8 @@ const SwipeScreen = () => {
                           : require("@/assets/images/avatar-placeholder.png")
                       }
                       style={{
-                        width: "100%",
-                        height: "100%",
+                        width: width,
+                        height: height,
                         marginTop: 0,
                         marginBottom: 0,
                       }}
@@ -546,7 +561,7 @@ const SwipeScreen = () => {
                       onError={(error) => console.log("Image load error:", error.nativeEvent.error)}
                       onLoad={() => console.log("Image loaded successfully:", imgSrc)}
                     />
-                    <View style={gradientOverlayStyle} pointerEvents="none" />
+                    <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.25)" }} pointerEvents="none" />
                   </View>
                 );
               }
@@ -556,7 +571,7 @@ const SwipeScreen = () => {
           // Loading state - show placeholder while resolving images
           <View
             className="relative items-center justify-center"
-            style={{ width, height: height - IMAGE_AREA_TOP - IMAGE_AREA_BOTTOM }}
+            style={{ width, height }}
           >
             <Image
               source={require("@/assets/images/avatar-placeholder.png")}
@@ -569,6 +584,7 @@ const SwipeScreen = () => {
               }}
               resizeMode="cover"
             />
+            <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.20)" }} pointerEvents="none" />
             <Text
               className="text-white text-[18px] font-normal text-center mt-6 opacity-80"
               style={{
