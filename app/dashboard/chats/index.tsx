@@ -10,7 +10,7 @@ import { useGetChatsService } from "@/src/presentation/services/ChatService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import formatMessageTime from "@/src/utils/formatMessageTime";
 import { useRouter } from "expo-router";
-import { ActivityIndicator, Dimensions, FlatList, Image, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Dimensions, FlatList, Image, Pressable, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const ChatsNotFound = require("@/assets/images/ChatsNotFound.png");
@@ -118,7 +118,7 @@ const ChatScreen = () => {
   const { avatar, isLoading: isUserLoading } = useAuthUserProfileStore();
 
   // Use service and store for chat list
-  const { chats, isLoading, isError, total } = useGetChatsService();
+  const { chats, isLoading, isError } = useGetChatsService();
 
   console.log(JSON.stringify(chats, null, 2));
 
@@ -157,16 +157,12 @@ const ChatScreen = () => {
           backgroundColor: "#eaf8fc",
         }}
       >
-        <Text style={{ fontWeight: "bold", fontSize: 26, color: "#222" }}>
-          Chats{typeof total === "number" && total > 0 ? ` (${total})` : ""}
-        </Text>
-        <Avatar size="md">
-          <AvatarImage
-            source={{
-              uri: avatar || "https://randomuser.me/api/portraits/men/10.jpg",
-            }}
-          />
-        </Avatar>
+        <Text style={{ fontWeight: "bold", fontSize: 26, color: "#222" }}>Chats</Text>
+        <Pressable onPress={() => router.push("/dashboard/profile")}>
+          <Avatar size="md">
+            <AvatarImage source={avatar ? { uri: avatar } : DefaultProfileImg} />
+          </Avatar>
+        </Pressable>
       </HStack>
       {/* Chat List or Empty State */}
       {isUserLoading || isLoading ? (
@@ -219,23 +215,12 @@ const ChatScreen = () => {
       ) : (
         <FlatList
           data={chats}
-          keyExtractor={(chat: any, index: number) => {
-            if (!chat.chatId) {
-              if (__DEV__) {
-                console.warn(`[ChatList] Missing chatId for chat at index ${index}:`, chat);
-              }
-              // Fallback to index as key (not ideal, but prevents React warning)
-              return `fallback-key-${index}`;
-            }
-            return chat.chatId;
-          }}
+          keyExtractor={(chat: any, index: number) => chat.chatId}
           renderItem={({ item: chat }: { item: any }) => {
             // You may want to adapt this logic if you need to show group/individual avatars/names
             const name = chat.name || "Chat";
             const avatar =
-              chat.image && typeof chat.image === "string" && chat.image.length > 0
-                ? chat.image
-                : DefaultProfileImg;
+              chat.image && typeof chat.image === "string" && chat.image.length > 0 ? chat.image : DefaultProfileImg;
             const last = {
               text: chat.chatLastMessageContent,
               isMe: chat.chatLastMessageIsByMe,
