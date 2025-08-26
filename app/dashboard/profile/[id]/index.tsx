@@ -1,147 +1,145 @@
-import { Avatar, AvatarBadge, AvatarImage } from "@/components/ui";
-import { Text } from "@/components/ui/text";
-import { useGetCurrentUserProfileByUserId } from "@/src/presentation/services/UserProfileService";
-import { useCurrentUserProfileStore } from "@/src/presentation/stores/current-user-profile.store";
-import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
-import React, { useRef, useState } from "react";
-import { Dimensions, ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+"use client"
 
-const { width } = Dimensions.get("window");
-const PROFILE_IMAGE = require("@/assets/images/profile-bg.jpg");
-const AVATAR_PLACEHOLDER = require("@/assets/images/avatar-placeholder.png");
+import { Avatar, AvatarBadge, AvatarImage } from "@/components/ui"
+import { Text } from "@/components/ui/text"
+import { useGetCurrentUserProfileByUserId } from "@/src/presentation/services/UserProfileService"
+import { useCurrentUserProfileStore } from "@/src/presentation/stores/current-user-profile.store"
+import { Ionicons } from "@expo/vector-icons"
+import { useLocalSearchParams } from "expo-router"
+import React, { useRef, useState } from "react"
+import { Dimensions, ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native"
+
+const { width } = Dimensions.get("window")
+const PROFILE_IMAGE = require("@/assets/images/profile-bg.jpg")
+const AVATAR_PLACEHOLDER = require("@/assets/images/avatar-placeholder.png")
 
 /**
  * Returns an excerpt of the given text, up to maxLength chars, ending at a word boundary.
  * Adds "…" if text is trimmed.
  */
-function getExcerpt(text: string, maxLength: number = 140): string {
-  if (!text) return "";
-  if (text.length <= maxLength) return text;
-  const trimmed = text.slice(0, maxLength);
-  const lastSpace = trimmed.lastIndexOf(" ");
-  return (lastSpace > 0 ? trimmed.slice(0, lastSpace) : trimmed).trim() + "…";
+function getExcerpt(text: string, maxLength = 140): string {
+  if (!text) return ""
+  if (text.length <= maxLength) return text
+  const trimmed = text.slice(0, maxLength)
+  const lastSpace = trimmed.lastIndexOf(" ")
+  return (lastSpace > 0 ? trimmed.slice(0, lastSpace) : trimmed).trim() + "…"
 }
 
 export default function UserProfileByIdScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [signedImages, setSignedImages] = useState<(string | number)[]>([]);
-  const [signedAvatar, setSignedAvatar] = useState<string | null>(null);
-  const [signing, setSigning] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const { id } = useLocalSearchParams<{ id: string }>()
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [signedImages, setSignedImages] = useState<(string | number)[]>([])
+  const [signedAvatar, setSignedAvatar] = useState<string | null>(null)
+  const [signing, setSigning] = useState(false)
+  const scrollViewRef = useRef<ScrollView>(null)
 
   // Get current profile from store for fast initial render
-  const userProfile = useCurrentUserProfileStore();
+  const userProfile = useCurrentUserProfileStore()
 
   // Fetch and update profile for visited user on mount
-  const { isLoading, error } = useGetCurrentUserProfileByUserId(id as string);
+  const { isLoading, error } = useGetCurrentUserProfileByUserId(id as string)
 
   // Utility to extract S3 key from a Supabase Storage URL
   function extractS3KeyFromUrl(url: string): string | null {
     // Example: .../helloapp/profiles/uuid/secondary_1.jpg?...  -> profiles/uuid/secondary_1.jpg
-    const match = url.match(/\/helloapp\/(.+?)(\?|$)/);
+    const match = url.match(/\/helloapp\/(.+?)(\?|$)/)
     if (match && match[1]) {
-      return match[1];
+      return match[1]
     }
-    return null;
+    return null
   }
 
   React.useEffect(() => {
     async function signImagesAndAvatar() {
       if (!userProfile?.secondaryImages || userProfile.secondaryImages.length === 0) {
-        setSignedImages([PROFILE_IMAGE]);
+        setSignedImages([PROFILE_IMAGE])
       } else {
-        setSigning(true);
+        setSigning(true)
         try {
-          const { getSignedUrlForKey } = await import("@/src/utils/supabaseS3Storage");
+          const { getSignedUrlForKey } = await import("@/src/utils/supabaseS3Storage")
           const promises = userProfile.secondaryImages.map(async (img: string) => {
-            if (typeof img !== "string") return img;
-            const key = extractS3KeyFromUrl(img);
-            if (!key) return img;
+            if (typeof img !== "string") return img
+            const key = extractS3KeyFromUrl(img)
+            if (!key) return img
             try {
-              const signed = await getSignedUrlForKey(key, 3600);
-              return signed;
+              const signed = await getSignedUrlForKey(key, 3600)
+              return signed
             } catch (err) {
-              console.warn("Failed to sign image", img, err);
-              return img;
+              console.warn("Failed to sign image", img, err)
+              return img
             }
-          });
-          const results = await Promise.all(promises);
-          setSignedImages(results);
+          })
+          const results = await Promise.all(promises)
+          setSignedImages(results)
 
           // Sign avatar if present
           if (userProfile.avatar && typeof userProfile.avatar === "string") {
-            const avatarKey = extractS3KeyFromUrl(userProfile.avatar);
+            const avatarKey = extractS3KeyFromUrl(userProfile.avatar)
             if (avatarKey) {
               try {
-                const signedAvatarUrl = await getSignedUrlForKey(avatarKey, 3600);
-                setSignedAvatar(signedAvatarUrl);
+                const signedAvatarUrl = await getSignedUrlForKey(avatarKey, 3600)
+                setSignedAvatar(signedAvatarUrl)
               } catch (err) {
-                console.warn("Failed to sign avatar", userProfile.avatar, err);
-                setSignedAvatar(userProfile.avatar);
+                console.warn("Failed to sign avatar", userProfile.avatar, err)
+                setSignedAvatar(userProfile.avatar)
               }
             } else {
-              setSignedAvatar(userProfile.avatar);
+              setSignedAvatar(userProfile.avatar)
             }
           } else {
-            setSignedAvatar(null);
+            setSignedAvatar(null)
           }
         } catch (err) {
-          console.warn("Error importing getSignedUrlForKey or signing images", err);
-          setSignedImages(userProfile.secondaryImages);
-          setSignedAvatar(userProfile.avatar ?? null);
+          console.warn("Error importing getSignedUrlForKey or signing images", err)
+          setSignedImages(userProfile.secondaryImages)
+          setSignedAvatar(userProfile.avatar ?? null)
         }
-        setSigning(false);
+        setSigning(false)
       }
     }
-    signImagesAndAvatar();
+    signImagesAndAvatar()
     // Only re-run if the images or avatar change
+  }, [userProfile.avatar, userProfile.secondaryImages])
 
-  }, [userProfile.avatar, userProfile.secondaryImages]);
-
-  const images =
-    signedImages && signedImages.length > 0
-      ? signedImages
-      : [PROFILE_IMAGE];
+  const images = signedImages && signedImages.length > 0 ? signedImages : [PROFILE_IMAGE]
 
   const handlePrevImage = () => {
-    const newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : images.length - 1;
-    setCurrentImageIndex(newIndex);
-    scrollViewRef.current?.scrollTo({ x: newIndex * width, animated: true });
-  };
+    const newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : images.length - 1
+    setCurrentImageIndex(newIndex)
+    scrollViewRef.current?.scrollTo({ x: newIndex * width, animated: true })
+  }
 
   const handleNextImage = () => {
-    const newIndex = currentImageIndex < images.length - 1 ? currentImageIndex + 1 : 0;
-    setCurrentImageIndex(newIndex);
-    scrollViewRef.current?.scrollTo({ x: newIndex * width, animated: true });
-  };
+    const newIndex = currentImageIndex < images.length - 1 ? currentImageIndex + 1 : 0
+    setCurrentImageIndex(newIndex)
+    scrollViewRef.current?.scrollTo({ x: newIndex * width, animated: true })
+  }
 
   const handleScroll = (event: any) => {
-    const contentOffset = event.nativeEvent.contentOffset.x;
-    const currentIndex = Math.round(contentOffset / width);
-    setCurrentImageIndex(currentIndex);
-  };
+    const contentOffset = event.nativeEvent.contentOffset.x
+    const currentIndex = Math.round(contentOffset / width)
+    setCurrentImageIndex(currentIndex)
+  }
 
   if (isLoading || signing) {
     return (
       <View style={styles.centered}>
         <Text>Cargando perfil...</Text>
       </View>
-    );
+    )
   }
 
   if (error || !userProfile || !userProfile.profileId) {
-    console.log(error, userProfile, userProfile.profileId);
+    console.log(error, userProfile, userProfile.profileId)
     return (
       <View style={styles.centered}>
         <Text>Error al cargar el perfil.</Text>
       </View>
-    );
+    )
   }
 
   // For debugging
-  console.log("PROFILE", { userProfile });
+  console.log("PROFILE", { userProfile })
 
   return (
     <View style={styles.container}>
@@ -232,11 +230,11 @@ export default function UserProfileByIdScreen() {
         </View>
       </ScrollView>
     </View>
-  );
+  )
 }
 
-const AVATAR_SIZE = 110;
-const AVATAR_OVERLAP = 55;
+const AVATAR_SIZE = 110
+const AVATAR_OVERLAP = 55
 
 const styles = StyleSheet.create({
   container: {
@@ -255,7 +253,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#eee",
     borderBottomLeftRadius: 180,
     borderBottomRightRadius: 180,
-    overflow: "hidden",
     alignItems: "center",
     justifyContent: "flex-end",
     position: "relative",
@@ -288,6 +285,9 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     zIndex: 1,
+    overflow: "hidden",
+    borderBottomLeftRadius: 180,
+    borderBottomRightRadius: 180,
   },
   topImage: {
     width: width,
@@ -323,7 +323,14 @@ const styles = StyleSheet.create({
     height: AVATAR_SIZE,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 5,
+    zIndex: 20,
+    backgroundColor: "#fff",
+    borderRadius: AVATAR_SIZE / 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
   infoContainer: {
     marginTop: AVATAR_OVERLAP + 20,
@@ -395,4 +402,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontFamily: "Poppins-SemiBold",
   },
-});
+})
