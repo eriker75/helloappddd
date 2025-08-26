@@ -195,7 +195,7 @@ export default function UserProfileByIdScreen() {
           <View style={styles.avatarWrapper}>
             <Avatar size="xl">
               <AvatarImage source={signedAvatar ? { uri: signedAvatar } : AVATAR_PLACEHOLDER} />
-              <AvatarBadge />
+              {userProfile.isOnline && <AvatarBadge />}
             </Avatar>
           </View>
         </View>
@@ -234,7 +234,7 @@ export default function UserProfileByIdScreen() {
 }
 
 const AVATAR_SIZE = 110
-const AVATAR_OVERLAP = 55
+const AVATAR_OVERLAP = 45
 
 const styles = StyleSheet.create({
   container: {
@@ -318,19 +318,12 @@ const styles = StyleSheet.create({
   avatarWrapper: {
     position: "absolute",
     bottom: -AVATAR_OVERLAP,
-    left: width / 2 - AVATAR_SIZE / 2,
+    left: (width - AVATAR_SIZE) / 2,
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 20,
-    backgroundColor: "#fff",
-    borderRadius: AVATAR_SIZE / 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
   },
   infoContainer: {
     marginTop: AVATAR_OVERLAP + 20,
