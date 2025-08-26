@@ -123,11 +123,14 @@ export async function findPrivateChatWithUser(otherUserId: string): Promise<Chat
 export function useSendMessageToChat(): UseMutationResult<
   boolean,
   unknown,
-  { chatId: string; message: Partial<Message> }
+  Partial<Message> & { chatId: string }
 > {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ chatId, message }) => datasource.sendMessageToChat(chatId, message),
+    mutationFn: (payload) => {
+      const { chatId, ...message } = payload;
+      return datasource.sendMessageToChat(chatId, message);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chat"] });
     },

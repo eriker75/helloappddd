@@ -1,15 +1,20 @@
 import { Box, HStack, Pressable, Text, VStack } from "@/components/ui";
 import { Image } from "@/components/ui/image";
 import { Textarea, TextareaInput } from "@/components/ui/textarea";
+import type { MessageContentType } from "@/src/definitions/types/MessageContent.type";
 import type { Message } from "@/src/domain/entities/Message";
 import { useGetChatMessagesService, useSendMessageToChatService } from "@/src/presentation/services/ChatService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import { useCurrentChatMessagesStore } from "@/src/presentation/stores/current-chat-messages.store";
 import formatMessageTime from "@/src/utils/formatMessageTime";
+import { pickAndUploadChatImageS3 } from "@/src/utils/uploadImageToSupabase";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useRef, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet } from "react-native";
+
+// --- New: Image handler logic ---
+
 
 const ChatHeader = () => (
   <Box style={styles.header}>
@@ -94,11 +99,13 @@ const ChatInputBar = ({
   onChangeText,
   onSend,
   sending,
+  onSendImage,
 }: {
   value: string;
   onChangeText: (text: string) => void;
   onSend: () => void;
   sending: boolean;
+  onSendImage?: () => void;
 }) => {
   const [inputHeight, setInputHeight] = React.useState(40);
 
@@ -129,7 +136,7 @@ const ChatInputBar = ({
           />
         </Textarea>
       </Box>
-      <Pressable style={styles.imageButton}>
+      <Pressable style={styles.imageButton} onPress={onSendImage}>
         <MaterialIcons name="image" size={22} color="#666" />
       </Pressable>
       <Pressable style={styles.sendButton} onPress={onSend} disabled={sending || !value.trim()}>
@@ -186,15 +193,45 @@ const ChatScreen = () => {
 
   // FIX 5: Memoize send handler
   const handleSend = React.useCallback(() => {
-    if (!input.trim() || isSending) return;
-    sendMessage({
+    console.log("[ChatScreen] handleSend called", { input, isSending, chatId });
+    if (!input.trim() || isSending) {
+      console.log("[ChatScreen] Aborted send, empty input or already sending.");
+      return;
+    }
+    const messageToSend = {
       content: input.trim(),
       createdAt: new Date(),
       messageId: `temp-${Date.now()}`,
       status: "sending",
-    });
+      type: "text" as MessageContentType,
+      chatId: chatId || "",
+      senderId: myUserId,
+    };
+    console.log("[ChatScreen] sendMessage invoked with:", messageToSend);
+    sendMessage(messageToSend);
     setInput("");
-  }, [input, isSending, sendMessage]);
+  }, [input, isSending, chatId, myUserId, sendMessage]);
+
+  // Image send handler (inside ChatScreen for correct scope)
+  // Image send handler using DRY helper
+  const handleSendImage = React.useCallback(async () => {
+    try {
+      const imageUrl = await pickAndUploadChatImageS3(chatId || "", myUserId);
+      if (!imageUrl) return;
+      // Send image chat message as before
+      sendMessage({
+        content: imageUrl,
+        createdAt: new Date(),
+        messageId: `temp-${Date.now()}`,
+        status: "sending",
+        type: "image" as MessageContentType,
+        chatId: chatId || "",
+        senderId: myUserId,
+      });
+    } catch (err) {
+      console.error("Image message send error:", err);
+    }
+  }, [chatId, myUserId, sendMessage]);
 
   // FIX: Memoized FlatList item/keys to comply with hooks rules and static typing
   const keyExtractor = React.useCallback(
@@ -293,19 +330,28 @@ const ChatScreen = () => {
               renderItem={renderItem}
               contentContainerStyle={styles.messagesContainer}
               showsVerticalScrollIndicator={false}
-              inverted={true}
+              // Standard top-down chat: show from top, newest at bottom
+              inverted={false}
               removeClippedSubviews={true}
               maxToRenderPerBatch={10}
               windowSize={10}
               initialNumToRender={20}
             />
           )}
-          <ChatInputBar value={input} onChangeText={setInput} onSend={handleSend} sending={isSending} />
+          <ChatInputBar
+            value={input}
+            onChangeText={setInput}
+            onSend={handleSend}
+            sending={isSending}
+            onSendImage={handleSendImage}
+          />
         </Box>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   safeArea: {

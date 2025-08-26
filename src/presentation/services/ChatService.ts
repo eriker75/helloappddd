@@ -222,10 +222,15 @@ export function useSendMessageToChatService(chatId: string) {
   const addMessage = useCurrentChatMessagesStore((s) => s.addMessage);
   const updateChatLastMessage = useChatListStore((s) => s.updateChatLastMessage);
   const sendMessage = (message: Partial<Message>) => {
+    console.log("[ChatService] sendMessage called with:", { chatId, message });
+    // Flatten payload so backend finds all fields at root level
+    const payload = { ...message, chatId };
+    console.log("[ChatService] sendMessage FLATTENED payload:", payload);
     mutation.mutate(
-      { chatId, message },
+      payload,
       {
         onSuccess: (_data, _variables, _context) => {
+          console.log("[ChatService] mutation onSuccess", { _data, _variables, _context });
           addMessage(message as Message);
           updateChatLastMessage(chatId, {
             id: (message as any).messageId ?? "",
@@ -239,6 +244,9 @@ export function useSendMessageToChatService(chatId: string) {
                 ? message.createdAt.toISOString()
                 : new Date().toISOString(),
           });
+        },
+        onError: (error, variables, context) => {
+          console.log("[ChatService] mutation onError", { error, variables, context });
         },
       }
     );

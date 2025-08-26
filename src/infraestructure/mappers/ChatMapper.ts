@@ -29,6 +29,7 @@ export function mapSingleChatResponseToChatEntity(singleChatResponse: ChatRespon
 
   return {
     chatId: singleChatResponse.id,
+    creatorId: singleChatResponse.creator_id ?? "",
     name,
     image,
     description: singleChatResponse.description ?? "",
@@ -101,6 +102,6 @@ export default function mapPartialMessageToCreateSendMessageData(
     content: partialMessage.content,
     draftContent: partialMessage.draftContent,
     type: partialMessage.type ?? "text",
-    parentId: partialMessage.parentId ?? "",
+    parentId: partialMessage.parentId ? partialMessage.parentId : null as any,
   };
 }

@@ -17,6 +17,7 @@ export interface ChatMessagesState {
   total: number;
   hasMore: boolean;
   lastMarkedAsReadMessageIds: string[];
+  loadingMessages: boolean;
 }
 
 export interface ChatMessagesActions {
@@ -58,11 +59,12 @@ const initialState: ChatMessagesState = {
   total: 0,
   hasMore: false,
   lastMarkedAsReadMessageIds: [],
+  loadingMessages: false,
 };
 
-function sortMessageIdsDesc(messages: Record<string, Message>): string[] {
+function sortMessageIdsAsc(messages: Record<string, Message>): string[] {
   return Object.values(messages)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .map((m) => m.messageId);
 }
 
@@ -82,7 +84,7 @@ const currentChatMessagesStoreCreator: StateCreator<
       state.orderedMessageIds = [];
       if (chat.messages) {
         state.messages = Object.fromEntries(chat.messages.map((m) => [m.messageId, m]));
-        const messageIds = sortMessageIdsDesc(state.messages);
+        const messageIds = sortMessageIdsAsc(state.messages);
         state.orderedMessageIds = messageIds;
         state.unreadMessageIds = messageIds;
       }
@@ -112,7 +114,7 @@ const currentChatMessagesStoreCreator: StateCreator<
   setInitialMessages: (messages, page = 1, perPage = 20, total = 0, hasMore = false) =>
     set((state) => {
       state.messages = Object.fromEntries(messages.map((m) => [m.messageId, m]));
-      const messageIds = sortMessageIdsDesc(state.messages);
+      const messageIds = sortMessageIdsAsc(state.messages);
       state.orderedMessageIds = messageIds;
       state.unreadMessageIds = messageIds;
       state.page = typeof page === "number" ? page : 1;
@@ -128,7 +130,7 @@ const currentChatMessagesStoreCreator: StateCreator<
           state.unreadMessageIds.push(m.messageId);
         }
       }
-      state.orderedMessageIds = sortMessageIdsDesc(state.messages);
+      state.orderedMessageIds = sortMessageIdsAsc(state.messages);
       if (typeof page === "number") state.page = page;
       if (typeof perPage === "number") state.perPage = perPage;
     }),
@@ -136,7 +138,7 @@ const currentChatMessagesStoreCreator: StateCreator<
     set((state) => {
       state.messages[message.messageId] = message;
       // Insertar al principio si es el más reciente
-      state.orderedMessageIds = sortMessageIdsDesc(state.messages);
+      state.orderedMessageIds = sortMessageIdsAsc(state.messages);
       if (!state.unreadMessageIds.includes(message.messageId)) {
         state.unreadMessageIds.push(message.messageId);
       }
@@ -148,7 +150,7 @@ const currentChatMessagesStoreCreator: StateCreator<
         state.messages[messageId] = { ...state.messages[messageId], ...update };
         // Solo reordenar si cambia createdAt
         if (update.createdAt && update.createdAt !== prevCreatedAt) {
-          state.orderedMessageIds = sortMessageIdsDesc(state.messages);
+          state.orderedMessageIds = sortMessageIdsAsc(state.messages);
         }
       }
     }),
