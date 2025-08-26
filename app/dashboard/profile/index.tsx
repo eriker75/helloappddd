@@ -3,6 +3,7 @@ import { Text } from "@/components/ui/text";
 import { useGoogleAuth } from "@/src/presentation/hooks/useGoogleAuth";
 import { useGetCurrentUserProfileByUserId } from "@/src/presentation/services/UserProfileService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Dimensions, ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
@@ -213,11 +214,11 @@ export default function ProfileScreen() {
           {images.length > 1 && (
             <>
               <TouchableOpacity style={[styles.navButton, styles.leftNavButton]} onPress={handlePrevImage}>
-                <Text style={{ color: "white", fontSize: 24 }}>{"<"}</Text>
+                <Ionicons name="chevron-back" size={24} color="white" />
               </TouchableOpacity>
 
               <TouchableOpacity style={[styles.navButton, styles.rightNavButton]} onPress={handleNextImage}>
-                <Text style={{ color: "white", fontSize: 24 }}>{">"}</Text>
+                <Ionicons name="chevron-forward" size={24} color="white" />
               </TouchableOpacity>
             </>
           )}
@@ -227,8 +228,8 @@ export default function ProfileScreen() {
             <Avatar size="xl">
               <AvatarImage source={signedAvatar ? { uri: signedAvatar } : AVATAR_PLACEHOLDER} />
               <AvatarBadge>
-                <TouchableOpacity style={styles.editBadge}>
-                  <Text style={styles.editIcon}>✎</Text>
+                <TouchableOpacity style={styles.bigEditBadge} onPress={() => router.push("/edit" as any)} activeOpacity={0.85}>
+                  <MaterialIcons name="edit" size={18} color="#25262c" />
                 </TouchableOpacity>
               </AvatarBadge>
             </Avatar>
@@ -307,7 +308,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#eee",
     borderBottomLeftRadius: 180,
     borderBottomRightRadius: 180,
-    overflow: "hidden",
     alignItems: "center",
     justifyContent: "flex-end",
     position: "relative",
@@ -340,6 +340,9 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     zIndex: 1,
+    overflow: "hidden",
+    borderBottomLeftRadius: 180,
+    borderBottomRightRadius: 180,
   },
   topImage: {
     width: width,
@@ -370,12 +373,12 @@ const styles = StyleSheet.create({
   avatarWrapper: {
     position: "absolute",
     bottom: -AVATAR_OVERLAP,
-    left: width / 2 - AVATAR_SIZE / 2,
+    left: (width - AVATAR_SIZE) / 2,
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 5,
+    zIndex: 20,
   },
   editBadge: {
     backgroundColor: "#fff",
@@ -385,6 +388,24 @@ const styles = StyleSheet.create({
     borderColor: "#e0e0e0",
     alignItems: "center",
     justifyContent: "center",
+  },
+  bigEditBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#f8fafc",
+    borderColor: "#ededed",
+    borderWidth: 0.8,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "absolute",
+    bottom: -4,
+    right: -2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   editIcon: {
     fontSize: 16,
