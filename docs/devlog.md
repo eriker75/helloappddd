@@ -1,3 +1,11 @@
+## 2025-08-29 - Real-Time Handler: Estado Chat/Mensajes con Stores y Eventos Realtime
+
+- Los métodos de `RealtimeChatHandler` ahora actualizan correctamente el estado local en respuesta a eventos realtime (nuevo mensaje, nuevo chat, etc.) usando los stores de Zustand (`addMessage`, `addChat`, etc.), garantizando reflejo inmediato y robusto entre dispositivos/usuarios.
+- Todos los campos requeridos para los objetos `Message` y `Chat` se completan con valores razonables si no vienen en el evento. Las fechas se convierten a `Date` y los enums usan la definición correcta.
+- Este refactor permite una UX reactiva, sólida y alineada con la arquitectura.
+- Ver [`src/infraestructure/handlers/RealtimeChatHandlers.ts`] para detalles de implementación.
+- Plan/justificación/documentación técnica: [2025-08-29-realtime-state-handling.md](2025-08-29-realtime-state-handling.md)
+
 ## 2025-08-26 - Support Visual Display of Image Messages in Chat
 
 - Added conditional rendering for messages of type `image` in the chat view ([`app/dashboard/chats/[chatId]/index.tsx`]), using the custom UI Image component for visual display.

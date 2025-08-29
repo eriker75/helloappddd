@@ -1,4 +1,5 @@
 import { Message } from "@/src/domain/entities/Message";
+import { UserProfile } from "@/src/domain/entities/UserProfile";
 import { create, StateCreator } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
@@ -18,9 +19,7 @@ export interface ChatMessagesState {
   hasMore: boolean;
   lastMarkedAsReadMessageIds: string[];
   loadingMessages: boolean;
-
-  // --- ADDED: Chat meta ---
-  otherUserProfile?: any;
+  otherUserProfile?: UserProfile;
   participants?: string[];
   type?: string;
 }

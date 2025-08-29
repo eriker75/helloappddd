@@ -25,6 +25,7 @@ export class RealtimeChatGateway {
           senderId: message.sender_id,
           content: message.content,
           createdAt: message.created_at,
+          type: message.type,
         });
       }
     });
