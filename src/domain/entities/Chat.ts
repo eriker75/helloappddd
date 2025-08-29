@@ -1,5 +1,6 @@
 import { LastMessageStatus } from "@/src/definitions/enums/LastMessageStatus.enum";
 import { ChatType } from "@/src/definitions/types/ChatType.type";
+import { UserProfile } from "./UserProfile";
 
 export interface Chat {
   chatId: string;
@@ -18,6 +19,7 @@ export interface Chat {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  otherUserProfile?: UserProfile;
 }
 
 export interface PaginatedChats {

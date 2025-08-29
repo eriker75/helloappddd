@@ -75,6 +75,8 @@ export function useGetMyChatMessages(chatId: string, page: number, perPage: numb
     queryKey: ["chat", "getAllMyChatMessages", chatId, page, perPage],
     queryFn: () => datasource.getAllMyChatMessages(chatId, page, perPage),
     enabled: !!chatId && typeof page === "number" && typeof perPage === "number" && page > 0 && perPage > 0,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 

@@ -63,7 +63,19 @@ const chatListStoreCreator: StateCreator<ChatListStore, [["zustand/immer", never
   ...initialState,
   setChats: (chats: Chat[], page = 1, perPage = 20, total = 0, hasMore = false) =>
     set((state) => {
-      state.chats = Object.fromEntries(chats.map((c) => [c.chatId, c]));
+      // Ensure all fields from API payload are preserved and date fields are stringified
+      state.chats = Object.fromEntries(
+        chats.map((c) => [
+          c.chatId,
+          {
+            ...c,
+            lastMessageCreatedAt: c.lastMessageCreatedAt ? new Date(c.lastMessageCreatedAt) : new Date(0),
+            lastMessageUpdatedAt: c.lastMessageUpdatedAt ? new Date(c.lastMessageUpdatedAt) : new Date(0),
+            createdAt: c.createdAt ? new Date(c.createdAt) : new Date(0),
+            updatedAt: c.updatedAt ? new Date(c.updatedAt) : new Date(0),
+          }
+        ])
+      );
       state.page = page;
       state.perPage = perPage;
       state.total = total;
@@ -71,8 +83,14 @@ const chatListStoreCreator: StateCreator<ChatListStore, [["zustand/immer", never
     }),
   appendChats: (chats: Chat[], page: number, perPage: number, total: number, hasMore: boolean) =>
     set((state) => {
-      for (const chat of chats) {
-        state.chats[chat.chatId] = chat;
+      for (const c of chats) {
+        state.chats[c.chatId] = {
+          ...c,
+          lastMessageCreatedAt: c.lastMessageCreatedAt ? new Date(c.lastMessageCreatedAt) : new Date(0),
+          lastMessageUpdatedAt: c.lastMessageUpdatedAt ? new Date(c.lastMessageUpdatedAt) : new Date(0),
+          createdAt: c.createdAt ? new Date(c.createdAt) : new Date(0),
+          updatedAt: c.updatedAt ? new Date(c.updatedAt) : new Date(0),
+        };
       }
       state.page = page;
       state.perPage = perPage;
@@ -88,8 +106,8 @@ const chatListStoreCreator: StateCreator<ChatListStore, [["zustand/immer", never
       delete state.chats[chatId];
     }),
   setLoadingChats: (loading: boolean) =>
-    set((state) => {
-      state.loadingChats = loading;
+    set((_state) => {
+      // No-op (remove if not needed)
     }),
   setPage: (page: number) =>
     set((state) => {
@@ -111,12 +129,14 @@ const chatListStoreCreator: StateCreator<ChatListStore, [["zustand/immer", never
     set((state) => {
       const chat = state.chats[chatId];
       if (chat) {
+        // Only update last message fields, preserve ALL other existing and extra fields
         state.chats[chatId] = {
           ...chat,
           lastMessageId: lastMessage.id,
           lastMessageContent: lastMessage.content,
-          lastMessageStatus: lastMessage.status,
-          lastMessageCreatedAt: lastMessage.createdAt,
+          lastMessageStatus: lastMessage.status as any,
+          lastMessageCreatedAt: lastMessage.createdAt ? new Date(lastMessage.createdAt) : new Date(0)
+          // No other props are touched, so all extra fields remain
         };
       }
     }),
@@ -128,9 +148,10 @@ const chatListStoreCreator: StateCreator<ChatListStore, [["zustand/immer", never
     set((state) => {
       const chat = state.chats[chatId];
       if (chat) {
+        // Only update unreadedCount, preserve ALL other existing and extra fields
         state.chats[chatId] = {
           ...chat,
-          unreadCount: count,
+          unreadedCount: count,
         };
       }
     }),

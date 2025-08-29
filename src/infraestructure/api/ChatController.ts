@@ -6,6 +6,7 @@ import {
   UpdateChatRequest,
 } from "@/src/domain/models/chat.models";
 import { getAuthenticatedUser } from "@/src/utils/getAuthenticatedUser";
+import { logWithColor } from "@/src/utils/logWithColor";
 import { supabase } from "@/src/utils/supabase";
 
 export class ChatController {
@@ -45,6 +46,8 @@ export class ChatController {
     } else {
       chat.participants = [];
     }
+
+    logWithColor(participantsError, "red");
 
     // For private chats: attach other_user_profile
     if (chat.type === "private" && Array.isArray(chat.participants)) {
@@ -153,6 +156,31 @@ export class ChatController {
         console.warn(`[ChatController] findMyChats chatId=${chatsWithProfiles[idx].id} FAILED to attach other_user_profile`);
       }
     }
+
+    // --- PATCH: Batch fetch last messages for ALL chats and attach as last_message ---
+    const lastMessageIds = chatsWithProfiles
+      .map(chat => chat.last_message_id)
+      .filter((id: string | undefined) => !!id);
+
+    let lastMessagesById: Record<string, any> = {};
+    if (lastMessageIds.length > 0) {
+      const { data: lastMessagesData } = await supabase
+        .from("messages")
+        .select("*")
+        .in("id", lastMessageIds);
+      if (Array.isArray(lastMessagesData)) {
+        for (const message of lastMessagesData) {
+          lastMessagesById[message.id] = message;
+        }
+      }
+    }
+
+    // Attach last_message to each chat (if available)
+    chatsWithProfiles.forEach(chat => {
+      if (chat.last_message_id && lastMessagesById[chat.last_message_id]) {
+        chat.last_message = lastMessagesById[chat.last_message_id];
+      }
+    });
 
     return {
       chats: chatsWithProfiles,

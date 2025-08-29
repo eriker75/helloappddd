@@ -1,6 +1,7 @@
 import { AbastractChatDatasoruce } from "@/src/domain/datasoruces/AbastractChatDatasoruce";
 import { Chat, PaginatedChats } from "@/src/domain/entities/Chat";
 import { Message, PaginatedMessages } from "@/src/domain/entities/Message";
+import { logWithColor } from "@/src/utils/logWithColor";
 import { ChatController } from "../api/ChatController";
 import mapPartialMessageToCreateSendMessageData, {
   mapPartialChatToCreateChatRequestData,
@@ -25,12 +26,12 @@ export class ChatDatasourceImpl implements AbastractChatDatasoruce {
   async findPrivateChatWithUser(otherUserId: string): Promise<Chat | null> {
     const chatResponse = await this.controller.findPrivateChatWithUser(otherUserId);
     if (!chatResponse) return null;
-    const { mapSingleChatResponseToChatEntity } = await import("../mappers/ChatMapper");
     return mapSingleChatResponseToChatEntity(chatResponse);
   }
 
   async findMyChats(page: number, perPage: number): Promise<PaginatedChats> {
     const allMyChats = await this.controller.findMyChats(page, perPage);
+    logWithColor(allMyChats, "purple")
     const chats = allMyChats.chats.map((chat) => mapSingleChatResponseToChatEntity(chat));
     return {
       chats,
@@ -58,6 +59,9 @@ export class ChatDatasourceImpl implements AbastractChatDatasoruce {
 
   async getAllMyChatMessages(chatId: string, page: number, perPage: number): Promise<PaginatedMessages> {
     const allMyChatsMessages = await this.controller.getAllMyChatMessages(chatId, page, perPage);
+
+    logWithColor(allMyChatsMessages, "yellow");
+
     const messages = allMyChatsMessages.messages.map((message) => mapSingleMessageResponseToMessageEntity(message));
     return {
       messages,

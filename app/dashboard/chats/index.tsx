@@ -9,6 +9,7 @@ import { VStack } from "@/components/ui/vstack";
 import { useGetChatsService } from "@/src/presentation/services/ChatService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import formatMessageTime from "@/src/utils/formatMessageTime";
+import { logWithColor } from "@/src/utils/logWithColor";
 import { useRouter } from "expo-router";
 import { ActivityIndicator, Dimensions, FlatList, Image, Pressable, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -116,23 +117,9 @@ const ChatListItem = ({
 const ChatScreen = () => {
   const router = useRouter();
   const { avatar, isLoading: isUserLoading } = useAuthUserProfileStore();
-
-  // Use service and store for chat list
   const { chats, isLoading, isError } = useGetChatsService();
 
-  console.log(JSON.stringify(chats, null, 2));
-
-  // Debug: Log chat IDs to check for missing/duplicate keys
-  if (__DEV__ && Array.isArray(chats)) {
-    const ids = chats.map((c: any) => c?.chatId);
-    const uniqueIds = new Set(ids);
-    if (ids.length !== uniqueIds.size) {
-      console.warn("[ChatList] Duplicate chatId(s) detected:", ids);
-    }
-    if (ids.some((id) => !id)) {
-      console.warn("[ChatList] Missing chatId(s) in chats:", chats);
-    }
-  }
+  logWithColor(chats, "red");
 
   const handleChatPress = (id: string) => {
     // Use object navigation if supported by Expo Router, otherwise fallback to any
@@ -239,10 +226,10 @@ const ChatScreen = () => {
                   : DefaultProfileImg;
             }
             const last = {
-              text: chat.chatLastMessageContent,
-              isMe: chat.chatLastMessageIsByMe,
-              status: chat.chatLastMessageStatus as "sent" | "delivered" | "read" | "none",
-              time: chat.chatLastMessageCreatedAt,
+              text: chat.lastMessageContent,
+              // isMe cannot be determined in chat list, unless we have last message sender info (optional: add logic with your user id)
+              status: chat.lastMessageStatus as "sent" | "delivered" | "read" | "none",
+              time: chat.lastMessageCreatedAt,
             };
             const unread = chat.unreadedCount || 0;
 
@@ -252,13 +239,11 @@ const ChatScreen = () => {
                 name={name}
                 avatar={avatar}
                 loading={false}
-                lastMessage={
-                  last.text !== undefined && last.text !== null ? (last.isMe ? `Tú: ${last.text}` : last.text) : ""
-                }
+                lastMessage={last.text && last.text.trim() !== "" ? last.text : "No messages yet"}
                 lastMessageStatus={last.status}
                 time={last.time}
                 unread={unread}
-                isMe={last.isMe}
+                isMe={false}
                 onPress={handleChatPress}
               />
             );

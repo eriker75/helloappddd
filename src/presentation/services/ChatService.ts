@@ -3,12 +3,14 @@ import { Message } from "@/src/domain/entities/Message";
 import {
   fetchMyChatMessages,
   fetchMyChats,
+  findPrivateChatWithUser,
   useCreateChat,
   useFindMyChats,
   useGetMyChatMessages,
   useMarkAllMessagesFromChatAsRead as useRepoMarkAllMessagesFromChatAsRead,
   useSendMessageToChat,
 } from "@/src/infraestructure/repositories/ChatRepositoryImpl";
+import { logWithColor } from "@/src/utils/logWithColor";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChatListStore } from "../stores/chat-list.store";
@@ -19,20 +21,19 @@ import { useCurrentChatMessagesStore } from "../stores/current-chat-messages.sto
  */
 export function useGetChatsService(page: number = 1, perPage: number = 20) {
   const { data: myFetchedChats, isLoading, isError } = useFindMyChats(page, perPage);
-  console.log(JSON.stringify(myFetchedChats, null, 2));
   const setChats = useChatListStore((s) => s.setChats);
-  const chats = useChatListStore((s) => s.chats);
   const total = useChatListStore((s) => s.total);
+
+  logWithColor(myFetchedChats,"orange")
 
   // Use ref to track if we've already initialized the chat list for this screen session
   const hasInitialized = useRef(false);
 
   useEffect(() => {
+    logWithColor("loading chats", "cyan")
     if (
       myFetchedChats &&
-      Array.isArray(myFetchedChats.chats) &&
-      !hasInitialized.current &&
-      Object.keys(chats).length === 0
+      Array.isArray(myFetchedChats.chats)
     ) {
       setChats(
         myFetchedChats.chats,
@@ -41,9 +42,9 @@ export function useGetChatsService(page: number = 1, perPage: number = 20) {
         myFetchedChats.total,
         myFetchedChats.hasMore
       );
-      hasInitialized.current = true;
+      hasInitialized.current = true; // retain for possible pagination logic
     }
-  }, [myFetchedChats, setChats, chats]);
+  }, [myFetchedChats, setChats]);
 
   // Get the chats object from the store and memoize sorted chats
   const chatsObject = useChatListStore((s) => s.chats);
@@ -135,7 +136,6 @@ export function useCreateChatService() {
  * Service to check if a private chat already exists with another user.
  */
 export async function findPrivateChatWithUserService(otherUserId: string) {
-  const { findPrivateChatWithUser } = await import("@/src/infraestructure/repositories/ChatRepositoryImpl");
   return await findPrivateChatWithUser(otherUserId);
 }
 
@@ -147,6 +147,8 @@ export function useGetChatMessagesService(chatId: string, page: number = 1, perP
   const setInitialMessages = useCurrentChatMessagesStore((s) => s.setInitialMessages);
   const currentChatId = useCurrentChatMessagesStore((s) => s.chatId);
   const total = useCurrentChatMessagesStore((s) => s.total);
+
+  logWithColor({ fetchMyChats: fetchMyChatMessages, fetchMyChatMessages: "fetchMyChatMessages" }, "yellow");
 
   // FIX: Use ref to avoid re-initializations
   const hasInitialized = useRef(false);
@@ -226,30 +228,27 @@ export function useSendMessageToChatService(chatId: string) {
     // Flatten payload so backend finds all fields at root level
     const payload = { ...message, chatId };
     console.log("[ChatService] sendMessage FLATTENED payload:", payload);
-    mutation.mutate(
-      payload,
-      {
-        onSuccess: (_data, _variables, _context) => {
-          console.log("[ChatService] mutation onSuccess", { _data, _variables, _context });
-          addMessage(message as Message);
-          updateChatLastMessage(chatId, {
-            id: (message as any).messageId ?? "",
-            content: message.content ?? "",
-            status: message.status ?? "sent",
-            isByMe: true,
-            createdAt:
-              typeof message.createdAt === "string"
-                ? message.createdAt
-                : message.createdAt instanceof Date
-                ? message.createdAt.toISOString()
-                : new Date().toISOString(),
-          });
-        },
-        onError: (error, variables, context) => {
-          console.log("[ChatService] mutation onError", { error, variables, context });
-        },
-      }
-    );
+    mutation.mutate(payload, {
+      onSuccess: (_data, _variables, _context) => {
+        console.log("[ChatService] mutation onSuccess", { _data, _variables, _context });
+        addMessage(message as Message);
+        updateChatLastMessage(chatId, {
+          id: (message as any).messageId ?? "",
+          content: message.content ?? "",
+          status: message.status ?? "sent",
+          isByMe: true,
+          createdAt:
+            typeof message.createdAt === "string"
+              ? message.createdAt
+              : message.createdAt instanceof Date
+              ? message.createdAt.toISOString()
+              : new Date().toISOString(),
+        });
+      },
+      onError: (error, variables, context) => {
+        console.log("[ChatService] mutation onError", { error, variables, context });
+      },
+    });
   };
 
   return {

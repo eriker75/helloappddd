@@ -1,16 +1,20 @@
 import { Box, HStack, Pressable, Text, VStack } from "@/components/ui";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Image } from "@/components/ui/image";
 import { Textarea, TextareaInput } from "@/components/ui/textarea";
 import type { MessageContentType } from "@/src/definitions/types/MessageContent.type";
 import type { Message } from "@/src/domain/entities/Message";
 import { useGetChatMessagesService, useSendMessageToChatService } from "@/src/presentation/services/ChatService";
+import { useGetCurrentUserProfileByUserId } from "@/src/presentation/services/UserProfileService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
+import { useChatListStore } from "@/src/presentation/stores/chat-list.store";
 import { useCurrentChatMessagesStore } from "@/src/presentation/stores/current-chat-messages.store";
 import formatMessageTime from "@/src/utils/formatMessageTime";
+import { logWithColor } from "@/src/utils/logWithColor";
 import { pickAndUploadChatImageS3 } from "@/src/utils/uploadImageToSupabase";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   InteractionManager,
@@ -22,22 +26,19 @@ import {
   StyleSheet,
 } from "react-native";
 
-// --- New: Image handler logic ---
-
-import { Avatar, AvatarImage } from "@/components/ui/avatar";
-import { useGetCurrentUserProfileByUserId } from "@/src/presentation/services/UserProfileService";
-import { useChatListStore } from "@/src/presentation/stores/chat-list.store";
-
 const DefaultProfileImg = require("@/assets/images/avatar-placeholder.png");
 
 const ChatHeader = ({ chatId, myUserId }: { chatId: string; myUserId: string }) => {
   const chat = useChatListStore((s) => s.chats[chatId]);
   // Only display for private (1-1) chat
   const isPrivate = !!chat && chat.type === "private";
+
+
   // Find target userId (even if not private for consistent hook order; will be undefined if not available)
   const otherUserId = isPrivate && chat
     ? chat.participants.find((id) => id !== myUserId)
     : "";
+
   // Always call the hook with empty string if otherUserId is undefined
   const userIdForHook = typeof otherUserId === "string" && otherUserId ? otherUserId : "";
   const userProfileResult = useGetCurrentUserProfileByUserId(userIdForHook);
@@ -255,7 +256,7 @@ const ChatScreen = () => {
   const orderedMessageIds = useCurrentChatMessagesStore((s) => s.orderedMessageIds);
 
   // FIX 2: Memoize storeMessages to avoid unstable array refs
-  const storeMessages = React.useMemo(
+  const storeMessages = useMemo(
     () => orderedMessageIds.map((id: string) => messagesObject[id]).filter(Boolean),
     [messagesObject, orderedMessageIds]
   );
@@ -272,9 +273,8 @@ const ChatScreen = () => {
     if (storeMessages.length === 0 || !flatListRef.current) return;
     try {
       flatListRef.current.scrollToOffset({ offset: 0, animated: true });
-      console.log("[ChatScreen] scrollToOffset({offset:0}) called");
     } catch (err) {
-      console.warn("[ChatScreen] Auto-scroll failed", err);
+      logWithColor(err, "red");
     }
   }, [storeMessages.length]);
 
@@ -305,10 +305,8 @@ const ChatScreen = () => {
   const [input, setInput] = useState("");
 
   // FIX 5: Memoize send handler
-  const handleSend = React.useCallback(() => {
-    console.log("[ChatScreen] handleSend called", { input, isSending, chatId });
+  const handleSend = useCallback(() => {
     if (!input.trim() || isSending) {
-      console.log("[ChatScreen] Aborted send, empty input or already sending.");
       return;
     }
     const messageToSend = {
@@ -320,7 +318,6 @@ const ChatScreen = () => {
       chatId: chatId || "",
       senderId: myUserId,
     };
-    console.log("[ChatScreen] sendMessage invoked with:", messageToSend);
     sendMessage(messageToSend);
     setInput("");
   }, [input, isSending, chatId, myUserId, sendMessage]);
@@ -403,8 +400,6 @@ const ChatScreen = () => {
       ) : null,
     [myUserId]
   );
-
-  console.log(JSON.stringify(storeMessages, null, 2));
 
   return (
     <SafeAreaView style={styles.safeArea}>
