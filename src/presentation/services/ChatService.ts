@@ -24,17 +24,14 @@ export function useGetChatsService(page: number = 1, perPage: number = 20) {
   const setChats = useChatListStore((s) => s.setChats);
   const total = useChatListStore((s) => s.total);
 
-  logWithColor(myFetchedChats,"orange")
+  logWithColor(myFetchedChats, "orange");
 
   // Use ref to track if we've already initialized the chat list for this screen session
   const hasInitialized = useRef(false);
 
   useEffect(() => {
-    logWithColor("loading chats", "cyan")
-    if (
-      myFetchedChats &&
-      Array.isArray(myFetchedChats.chats)
-    ) {
+    logWithColor("loading chats", "cyan");
+    if (myFetchedChats && Array.isArray(myFetchedChats.chats)) {
       setChats(
         myFetchedChats.chats,
         myFetchedChats.page,
@@ -144,11 +141,8 @@ export async function findPrivateChatWithUserService(otherUserId: string) {
  */
 export function useGetChatMessagesService(chatId: string, page: number = 1, perPage: number = 20) {
   const { data: fetchedMessages, isLoading, isError } = useGetMyChatMessages(chatId, page, perPage);
-  const setInitialMessages = useCurrentChatMessagesStore((s) => s.setInitialMessages);
-  const currentChatId = useCurrentChatMessagesStore((s) => s.chatId);
+  const setChat = useCurrentChatMessagesStore((s) => s.setChat);
   const total = useCurrentChatMessagesStore((s) => s.total);
-
-  logWithColor({ fetchMyChats: fetchMyChatMessages, fetchMyChatMessages: "fetchMyChatMessages" }, "yellow");
 
   // FIX: Use ref to avoid re-initializations
   const hasInitialized = useRef(false);
@@ -164,27 +158,50 @@ export function useGetChatMessagesService(chatId: string, page: number = 1, perP
 
   // Only sync initial messages once per chat and when store is empty or different chat
   useEffect(() => {
-    if (
-      fetchedMessages &&
-      Array.isArray(fetchedMessages.messages) &&
-      !hasInitialized.current &&
-      (total === 0 || currentChatId !== chatId)
-    ) {
-      setInitialMessages(
-        fetchedMessages.messages,
-        fetchedMessages.page,
-        fetchedMessages.perPage,
-        fetchedMessages.total,
-        fetchedMessages.hasMore
-      );
+    if (fetchedMessages && Array.isArray(fetchedMessages.messages)) {
+
+      logWithColor(fetchedMessages, "pink");
+
+      setChat({
+        chatId: chatId,
+        chatName: "",
+        chatImage: "",
+        chatIsActive: true,
+        messages: fetchedMessages.messages,
+        page: fetchedMessages.page,
+        perPage: fetchedMessages.perPage,
+        total: fetchedMessages.total,
+        hasMore: fetchedMessages.hasMore,
+        otherUserProfile: fetchedMessages.otherUserProfile,
+        unreadMessageIds: [],
+        lastMarkedAsReadMessageIds: [],
+        loadingMessages: false,
+      });
       hasInitialized.current = true;
     }
-  }, [fetchedMessages, setInitialMessages, total, currentChatId, chatId]);
+  }, [fetchedMessages, setChat, chatId]);
+
+  // Expose all useful chat state, including meta and pagination, from store:
+  const otherUserProfile = useCurrentChatMessagesStore((s) => s.otherUserProfile);
+  const storePage = useCurrentChatMessagesStore((s) => s.page);
+  const storePerPage = useCurrentChatMessagesStore((s) => s.perPage);
+  const hasMore = useCurrentChatMessagesStore((s) => s.hasMore);
+
+  const messagesObject = useCurrentChatMessagesStore((s) => s.messages);
+  const orderedMessageIds = useCurrentChatMessagesStore((s) => s.orderedMessageIds);
+  const messages = orderedMessageIds.map((id: string) => messagesObject[id]).filter(Boolean);
 
   return {
     isLoading,
     isError,
     total,
+    otherUserProfile,
+    messages,
+    messagesObject,
+    orderedMessageIds,
+    page: storePage,
+    perPage: storePerPage,
+    hasMore,
   };
 }
 

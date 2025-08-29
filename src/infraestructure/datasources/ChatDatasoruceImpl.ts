@@ -9,6 +9,7 @@ import mapPartialMessageToCreateSendMessageData, {
   mapSingleChatResponseToChatEntity,
   mapSingleMessageResponseToMessageEntity,
 } from "../mappers/ChatMapper";
+import { mapUserProfileResponseToUserProfileEntity } from "../mappers/UserProfileMapper";
 
 export class ChatDatasourceImpl implements AbastractChatDatasoruce {
   private controller: ChatController;
@@ -31,7 +32,7 @@ export class ChatDatasourceImpl implements AbastractChatDatasoruce {
 
   async findMyChats(page: number, perPage: number): Promise<PaginatedChats> {
     const allMyChats = await this.controller.findMyChats(page, perPage);
-    logWithColor(allMyChats, "purple")
+    logWithColor(allMyChats, "purple");
     const chats = allMyChats.chats.map((chat) => mapSingleChatResponseToChatEntity(chat));
     return {
       chats,
@@ -60,6 +61,7 @@ export class ChatDatasourceImpl implements AbastractChatDatasoruce {
   async getAllMyChatMessages(chatId: string, page: number, perPage: number): Promise<PaginatedMessages> {
     const allMyChatsMessages = await this.controller.getAllMyChatMessages(chatId, page, perPage);
 
+    logWithColor("==== LISTING ALL MESSAGES ===", "green");
     logWithColor(allMyChatsMessages, "yellow");
 
     const messages = allMyChatsMessages.messages.map((message) => mapSingleMessageResponseToMessageEntity(message));
@@ -70,6 +72,9 @@ export class ChatDatasourceImpl implements AbastractChatDatasoruce {
       perPage,
       hasMore: allMyChatsMessages.hasMore,
       total: allMyChatsMessages.total,
+      otherUserProfile: allMyChatsMessages.otherUserProfile
+        ? mapUserProfileResponseToUserProfileEntity(allMyChatsMessages.otherUserProfile)
+        : undefined,
     };
   }
 

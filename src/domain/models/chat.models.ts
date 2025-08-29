@@ -69,4 +69,5 @@ export interface MessageListResponse {
   perPage: number;
   total: number;
   hasMore: boolean;
+  otherUserProfile?: UserProfileResponse;
 }

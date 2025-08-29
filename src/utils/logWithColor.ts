@@ -16,6 +16,7 @@ export type LogColor =
   | "blue"
   | "magenta"
   | "cyan"
+  | "pink"
   | "white"
   | "gray"
   | "reset"
@@ -26,6 +27,7 @@ export type LogColor =
   | "brightBlue"
   | "brightMagenta"
   | "brightCyan"
+  | "brightPink"
   | "brightWhite"
   | "bgRed"
   | "bgGreen"
@@ -38,6 +40,7 @@ export type LogColor =
   | "bgBrightRed"
   | "bgBrightGreen"
   | "bgBrightYellow"
+  | "bgBrightPink"
   | "bgBrightBlue"
   | "bgBrightMagenta"
   | "bgBrightCyan"
@@ -49,6 +52,7 @@ const colorCodes: Record<LogColor, string> & { default: string } = {
   red: "\x1b[31m",
   orange: "\x1b[38;5;208m",
   green: "\x1b[32m",
+  pink: "\x1b[38;5;205m",
   yellow: "\x1b[33m",
   blue: "\x1b[34m",
   magenta: "\x1b[35m",
@@ -64,6 +68,7 @@ const colorCodes: Record<LogColor, string> & { default: string } = {
   brightMagenta: "\x1b[95m",
   brightCyan: "\x1b[96m",
   brightWhite: "\x1b[97m",
+  brightPink: "\x1b[95m",
   bgRed: "\x1b[41m",
   bgGreen: "\x1b[42m",
   bgYellow: "\x1b[43m",
@@ -74,6 +79,7 @@ const colorCodes: Record<LogColor, string> & { default: string } = {
   bgBrightRed: "\x1b[101m",
   bgBrightGreen: "\x1b[102m",
   bgBrightYellow: "\x1b[103m",
+  bgBrightPink: "\x1b[105m",
   bgBrightBlue: "\x1b[104m",
   bgBrightMagenta: "\x1b[105m",
   bgBrightCyan: "\x1b[106m",

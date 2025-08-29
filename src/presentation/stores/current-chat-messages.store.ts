@@ -18,6 +18,11 @@ export interface ChatMessagesState {
   hasMore: boolean;
   lastMarkedAsReadMessageIds: string[];
   loadingMessages: boolean;
+
+  // --- ADDED: Chat meta ---
+  otherUserProfile?: any;
+  participants?: string[];
+  type?: string;
 }
 
 export interface ChatMessagesActions {
@@ -80,6 +85,12 @@ const currentChatMessagesStoreCreator: StateCreator<
       state.chatName = chat.chatName;
       state.chatImage = chat.chatImage;
       state.chatIsActive = chat.chatIsActive;
+      // Only update profile if new value is defined
+      if (chat.otherUserProfile !== undefined) {
+        state.otherUserProfile = chat.otherUserProfile;
+      }
+      state.participants = chat.participants;
+      state.type = chat.type;
       state.messages = {};
       state.orderedMessageIds = [];
       if (chat.messages) {

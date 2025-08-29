@@ -270,7 +270,7 @@ export class ChatController {
   }
 
   async getAllMyChatMessages(chatId: string, page: number, perPage: number): Promise<MessageListResponse> {
-    await getAuthenticatedUser();
+    const user = await getAuthenticatedUser();
     const from = (page - 1) * perPage;
     const to = from + perPage - 1;
 
@@ -287,12 +287,45 @@ export class ChatController {
 
     if (error) throw new Error("Error listing messages: " + error.message);
 
+    // Fetch private chat, participants, and other profile if exists
+    let otherUserProfile = undefined;
+    const { data: chatList, error: chatError } = await supabase
+      .from("chats")
+      .select("*")
+      .eq("id", chatId)
+      .eq("is_active", true);
+
+    if (chatList && chatList.length > 0) {
+      const chat = chatList[0];
+      if (chat.type === "private") {
+        const { data: participantRows } = await supabase
+          .from("participants")
+          .select("user_id")
+          .eq("chat_id", chatId);
+        if (participantRows && participantRows.length >= 2) {
+          const myId = user.id;
+          const otherUserId = participantRows.map((p: any) => p.user_id).find((id: string) => id !== myId);
+          if (otherUserId) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("user_id", otherUserId)
+              .single();
+            if (profile) {
+              otherUserProfile = profile;
+            }
+          }
+        }
+      }
+    }
+
     return {
       messages: messages ?? [],
       page,
       perPage,
       total: typeof count === "number" ? count : messages ? messages.length : 0,
       hasMore: to + 1 < (count ?? 0),
+      ...(otherUserProfile ? { otherUserProfile } : {}),
     };
   }
 
