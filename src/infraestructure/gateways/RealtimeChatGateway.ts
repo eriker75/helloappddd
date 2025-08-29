@@ -15,20 +15,28 @@ export class RealtimeChatGateway {
   // Listen for new messages in any chat
   onNewMessage(): RealtimeChannel {
     console.log("🎧 Setting up new message listener...");
-    return subscribeTable("messages", ["INSERT"], (payload) => {
-      console.log("💬 New message payload:", payload);
-      const { new: message } = payload;
-      if (message) {
-        this.service.handleNewMessage({
-          id: message.id,
-          chatId: message.chat_id,
-          senderId: message.sender_id,
-          content: message.content,
-          createdAt: message.created_at,
-          type: message.type,
-        });
-      }
-    });
+    // Get current user ID for exclusion filter (only receive events from others)
+
+    return subscribeTable(
+      "messages",
+      ["INSERT"],
+      (payload) => {
+        console.log("💬 New message payload:", payload);
+        const { new: message } = payload;
+        if (message) {
+          this.service.handleNewMessage(
+            {
+              id: message.id,
+              chatId: message.chat_id,
+              senderId: message.sender_id,
+              content: message.content,
+              createdAt: message.created_at,
+              type: message.type,
+            }
+          );
+        }
+      },
+    );
   }
 
   // Listen for new chat creation

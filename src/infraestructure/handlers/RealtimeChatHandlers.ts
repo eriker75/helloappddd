@@ -5,6 +5,7 @@
 import { LastMessageStatus } from "@/src/definitions/enums/LastMessageStatus.enum";
 import { ChatType } from "@/src/definitions/types/ChatType.type";
 import { MessageContentType } from "@/src/definitions/types/MessageContent.type";
+import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
 import { useChatListStore } from "@/src/presentation/stores/chat-list.store";
 import { useCurrentChatMessagesStore } from "@/src/presentation/stores/current-chat-messages.store";
 
@@ -12,6 +13,10 @@ export class RealtimeChatHandler {
   /**
    * Handle an incoming new message event from realtime backend.
    * Updates both messages store and chat list state.
+   */
+  /**
+   * Handle an incoming new message event from realtime backend.
+   * Only adds to state if the sender is NOT the current user.
    */
   handleNewMessage(newMessageEvent: {
     id: string;
@@ -24,8 +29,10 @@ export class RealtimeChatHandler {
   }) {
     console.log("🧠 [Handler] Handling new message event:", newMessageEvent);
 
-    // Insert or update the new message in the current chat messages store
-    // The actual message entity may require other fields - adapt as needed.
+    const myUserId = useAuthUserProfileStore.getState().userId;
+    // Only handle messages written BY OTHERS
+    if (newMessageEvent.senderId === myUserId) return;
+
     useCurrentChatMessagesStore.getState().addMessage({
       messageId: newMessageEvent.id,
       chatId: newMessageEvent.chatId,
@@ -40,7 +47,6 @@ export class RealtimeChatHandler {
       // Add other required properties and handle event-provided extensions
     });
 
-    // Update the last message metadata in the chat list store
     useChatListStore.getState().updateChatLastMessage(newMessageEvent.chatId, {
       id: newMessageEvent.id,
       content: newMessageEvent.content,
@@ -85,12 +91,7 @@ export class RealtimeChatHandler {
     });
   }
 
-  handleTypingEvent(newTypingEvent: {
-    chatId: string;
-    userId: string;
-    isTyping: boolean;
-    updatedAt: string;
-  }) {
+  handleTypingEvent(newTypingEvent: { chatId: string; userId: string; isTyping: boolean; updatedAt: string }) {
     // Business logic for a typing event
     console.log("🧠 [Handler] Handling typing event:", newTypingEvent);
     // TODO: Implement typing state update if store exists
@@ -100,15 +101,8 @@ export class RealtimeChatHandler {
    * Handle a realtime update that a user has come online or gone offline.
    * If you want to reflect this in the UI, consider extending the chat/user stores with online status per user.
    */
-  handleUserOnlineEvent(newUserOnlineEvent: {
-    userId: string;
-    isOnline: boolean;
-    lastOnline: string;
-  }) {
-    console.log(
-      "🧠 [Handler] Handling user online event:",
-      newUserOnlineEvent
-    );
+  handleUserOnlineEvent(newUserOnlineEvent: { userId: string; isOnline: boolean; lastOnline: string }) {
+    console.log("🧠 [Handler] Handling user online event:", newUserOnlineEvent);
     // TODO: Implement state update for user online/offline in store if/when such field exists.
     // For now, this is logged only.
   }
@@ -120,10 +114,7 @@ export class RealtimeChatHandler {
     updatedAt: string;
   }) {
     // Business logic for an unread count event
-    console.log(
-      "🧠 [Handler] Handling unread count event:",
-      newUnreadedCountEvent
-    );
+    console.log("🧠 [Handler] Handling unread count event:", newUnreadedCountEvent);
     // TODO: Optionally, update unread counts in chatListStore with setChatUnreadCount if needed
     // useChatListStore.getState().setChatUnreadCount(newUnreadedCountEvent.chatId, newUnreadedCountEvent.unreadCount);
   }
