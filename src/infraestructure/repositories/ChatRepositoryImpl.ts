@@ -30,6 +30,8 @@ export function useFindMyChats(page: number, perPage: number): UseQueryResult<Pa
   return useQuery({
     queryKey: ["chat", "findMyChats", page, perPage],
     queryFn: () => datasource.findMyChats(page, perPage),
+    staleTime: 0,
+    refetchOnMount: "always",
     enabled: typeof page === "number" && typeof perPage === "number" && page > 0 && perPage > 0,
   });
 }

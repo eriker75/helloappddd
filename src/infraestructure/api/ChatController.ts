@@ -21,12 +21,9 @@ export class ChatController {
   // The following methods are restored to match datasource/repository dependencies
 
   async findMyChatById(id: string): Promise<ChatResponse | null> {
-    console.log('\x1b[33m\n[ChatController] ====> START findMyChatById ====\n\x1b[0m');
+    console.log("\x1b[33m\n[ChatController] ====> START findMyChatById ====\n\x1b[0m");
     const user = await getAuthenticatedUser();
-    const { data: participantRows } = await supabase
-      .from("participants")
-      .select("chat_id, user_id")
-      .eq("chat_id", id);
+    const { data: participantRows } = await supabase.from("participants").select("chat_id, user_id").eq("chat_id", id);
 
     if (!participantRows || participantRows.length === 0) return null;
 
@@ -53,13 +50,15 @@ export class ChatController {
     if (chat.type === "private" && Array.isArray(chat.participants)) {
       // Find other participant
       const myId = user.id;
-      const otherUserId = chat.participants.find(pid => pid !== myId);
+      const otherUserId = chat.participants.find((pid) => pid !== myId);
       if (otherUserId) {
         const otherProfile = await this.fetchUserProfileByUserId(otherUserId);
         if (otherProfile) {
           chat.other_user_profile = otherProfile;
           console.log(
-            `\n\x1b[32m[ChatController] findMyChatById id=${chat.id} type=private, attached other_user_profile:\n${JSON.stringify(
+            `\n\x1b[32m[ChatController] findMyChatById id=${
+              chat.id
+            } type=private, attached other_user_profile:\n${JSON.stringify(
               {
                 alias: otherProfile.alias,
                 avatar: otherProfile.avatar,
@@ -67,11 +66,13 @@ export class ChatController {
                 full_profile: otherProfile,
               },
               null,
-              2,
+              2
             )}\x1b[0m\n`
           );
         } else {
-          console.warn(`[ChatController] findMyChatById id=${chat.id} type=private, FAILED to attach other_user_profile`);
+          console.warn(
+            `[ChatController] findMyChatById id=${chat.id} type=private, FAILED to attach other_user_profile`
+          );
         }
       }
     } else {
@@ -81,7 +82,7 @@ export class ChatController {
   }
 
   async findMyChats(page: number, perPage: number): Promise<ChatListResponse> {
-    console.log('\x1b[33m\n[ChatController] ====> START findMyChats ====\n\x1b[0m');
+    console.log("\x1b[33m\n[ChatController] ====> START findMyChats ====\n\x1b[0m");
     // Dummy pagination logic
     const user = await getAuthenticatedUser();
     const { data: participantRows } = await supabase.from("participants").select("chat_id").eq("user_id", user.id);
@@ -93,7 +94,7 @@ export class ChatController {
     let chatsWithProfiles: ChatResponse[] = Array.isArray(chats) ? [...chats] : [];
 
     // --- PATCH: get participants for all chats in parallel, then inject! ---
-    const chatIdList = chatsWithProfiles.map(chat => chat.id);
+    const chatIdList = chatsWithProfiles.map((chat) => chat.id);
     let allParticipants: { [chatId: string]: string[] } = {};
     if (chatIdList.length > 0) {
       const { data: participantsData } = await supabase
@@ -109,7 +110,7 @@ export class ChatController {
       }
     }
     // Inject participants into each chat
-    chatsWithProfiles.forEach(chat => {
+    chatsWithProfiles.forEach((chat) => {
       chat.participants = allParticipants[chat.id] || [];
     });
 
@@ -141,7 +142,9 @@ export class ChatController {
       if (profilesByUserId[uid]) {
         (chatsWithProfiles[idx] as any).other_user_profile = profilesByUserId[uid];
         console.log(
-          `\n\x1b[32m[ChatController] findMyChats chatId=${chatsWithProfiles[idx].id} attached other_user_profile:\n${JSON.stringify(
+          `\n\x1b[32m[ChatController] findMyChats chatId=${
+            chatsWithProfiles[idx].id
+          } attached other_user_profile:\n${JSON.stringify(
             {
               alias: profilesByUserId[uid].alias,
               avatar: profilesByUserId[uid].avatar,
@@ -149,25 +152,24 @@ export class ChatController {
               full_profile: profilesByUserId[uid],
             },
             null,
-            2,
+            2
           )}\x1b[0m\n`
         );
       } else {
-        console.warn(`[ChatController] findMyChats chatId=${chatsWithProfiles[idx].id} FAILED to attach other_user_profile`);
+        console.warn(
+          `[ChatController] findMyChats chatId=${chatsWithProfiles[idx].id} FAILED to attach other_user_profile`
+        );
       }
     }
 
     // --- PATCH: Batch fetch last messages for ALL chats and attach as last_message ---
     const lastMessageIds = chatsWithProfiles
-      .map(chat => chat.last_message_id)
+      .map((chat) => chat.last_message_id)
       .filter((id: string | undefined) => !!id);
 
     let lastMessagesById: Record<string, any> = {};
     if (lastMessageIds.length > 0) {
-      const { data: lastMessagesData } = await supabase
-        .from("messages")
-        .select("*")
-        .in("id", lastMessageIds);
+      const { data: lastMessagesData } = await supabase.from("messages").select("*").in("id", lastMessageIds);
       if (Array.isArray(lastMessagesData)) {
         for (const message of lastMessagesData) {
           lastMessagesById[message.id] = message;
@@ -176,7 +178,7 @@ export class ChatController {
     }
 
     // Attach last_message to each chat (if available)
-    chatsWithProfiles.forEach(chat => {
+    chatsWithProfiles.forEach((chat) => {
       if (chat.last_message_id && lastMessagesById[chat.last_message_id]) {
         chat.last_message = lastMessagesById[chat.last_message_id];
       }
@@ -295,22 +297,19 @@ export class ChatController {
       .eq("id", chatId)
       .eq("is_active", true);
 
+    if (chatError) {
+      logWithColor(chatError, "red");
+    }
+
     if (chatList && chatList.length > 0) {
       const chat = chatList[0];
       if (chat.type === "private") {
-        const { data: participantRows } = await supabase
-          .from("participants")
-          .select("user_id")
-          .eq("chat_id", chatId);
+        const { data: participantRows } = await supabase.from("participants").select("user_id").eq("chat_id", chatId);
         if (participantRows && participantRows.length >= 2) {
           const myId = user.id;
           const otherUserId = participantRows.map((p: any) => p.user_id).find((id: string) => id !== myId);
           if (otherUserId) {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("user_id", otherUserId)
-              .single();
+            const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", otherUserId).single();
             if (profile) {
               otherUserProfile = profile;
             }

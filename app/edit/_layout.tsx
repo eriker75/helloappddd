@@ -10,6 +10,7 @@ export default function EditLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: "Editar Perfil" }} />
+      <Stack.Screen name="images" options={{ title: "Editar Imagenes de Perfil" }} />
     </Stack>
   );
 }

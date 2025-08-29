@@ -9,6 +9,7 @@ import { INTEREST_TYPES } from "@/src/definitions/constants/INTEREST_TYPES";
 import { useUpdateMyUserProfileInformation } from "@/src/presentation/services/UserProfileService";
 import { useCurrentUserProfileStore } from "@/src/presentation/stores/current-user-profile.store";
 import { EditProfileForm, editProfileSchema } from "@/src/presentation/validators/edit-profile.schema";
+import { logWithColor } from "@/src/utils/logWithColor";
 import { getSignedUrlForKey } from "@/src/utils/supabaseS3Storage";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -145,6 +146,7 @@ const EditProfileScreen = () => {
           try {
             mainUrl = await getSignedUrlForKey(key);
           } catch (e) {
+            logWithColor(e, "red");
             mainUrl = mainPicture; // fallback to original
           }
         } else {
@@ -164,6 +166,7 @@ const EditProfileScreen = () => {
               try {
                 return await getSignedUrlForKey(key);
               } catch (e) {
+                logWithColor(e, "red");
                 return img;
               }
             }
@@ -405,9 +408,7 @@ const EditProfileScreen = () => {
           {/* Pictures Section - Onboarding Style */}
           <VStack className="mt-8 items-center w-full">
             <Text className="text-2xl font-bold text-black text-left mb-4">Edita tus fotos de perfil</Text>
-            <Text className="text-gray-600 text-left text-base mb-6">
-              Puedes actualizar tus fotos cuando quieras.
-            </Text>
+            <Text className="text-gray-600 text-left text-base mb-6">Puedes actualizar tus fotos cuando quieras.</Text>
             {/* Main Picture */}
             <View className="items-center mb-8">
               <TouchableOpacity

@@ -2,6 +2,7 @@ import gpsAnimation from "@/assets/animations/gps-signal.json";
 import { Spinner } from "@/components/ui";
 import { useListNearbyMatchProfileService } from "@/src/presentation/services/UserProfileService";
 import { useAuthUserProfileStore } from "@/src/presentation/stores/auth-user-profile.store";
+import { logWithColor } from "@/src/utils/logWithColor";
 import { Redirect, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useMemo, useState } from "react";
@@ -58,6 +59,9 @@ const RadarScreen = () => {
   const longitude = useAuthUserProfileStore((store) => store.longitude);
   const isAuthenticated = useAuthUserProfileStore((store) => store.isAuthenticated);
   const isLoadingAuth = useAuthUserProfileStore((store) => store.isLoading);
+  const userProfile = useAuthUserProfileStore((s) => s);
+
+  logWithColor(userProfile, "pink");
 
   // Compose a user object compatible with the rest of the code
   const user = {
