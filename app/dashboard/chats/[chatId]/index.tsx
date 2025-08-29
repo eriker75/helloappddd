@@ -389,13 +389,13 @@ const ChatScreen = () => {
           ) : (
             <FlatList
               ref={flatListRef}
-              data={messages.slice().reverse()}
+              data={messages}
               keyExtractor={keyExtractor}
               renderItem={renderItem}
               contentContainerStyle={styles.messagesContainer}
               showsVerticalScrollIndicator={false}
-              // Standard top-down chat: show from top, newest at bottom
-              inverted={true}
+              // Standard top-down chat: oldest at top, newest at bottom
+              inverted={false}
               removeClippedSubviews={true}
               maxToRenderPerBatch={10}
               windowSize={10}

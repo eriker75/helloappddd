@@ -146,8 +146,9 @@ const currentChatMessagesStoreCreator: StateCreator<
     }),
   addMessage: (message) =>
     set((state) => {
+      // Prevent duplicate messages (e.g. optimistic insert + RT update)
+      if (state.messages[message.messageId]) return;
       state.messages[message.messageId] = message;
-      // Insertar al principio si es el más reciente
       state.orderedMessageIds = sortMessageIdsAsc(state.messages);
       if (!state.unreadMessageIds.includes(message.messageId)) {
         state.unreadMessageIds.push(message.messageId);

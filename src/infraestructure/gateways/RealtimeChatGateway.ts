@@ -43,6 +43,7 @@ export class RealtimeChatGateway {
           name: chat.name,
           creatorId: chat.creator_id,
           createdAt: chat.created_at,
+          type: chat.type
         });
       }
     });
